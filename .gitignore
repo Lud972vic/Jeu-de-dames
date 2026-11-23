@@ -1,0 +1,8 @@
+# Builds générés (reproductibles via `npm run build:offline`)
+dist/
+
+# Dépendances / artefacts locaux
+node_modules/
+*.log
+.DS_Store
+Thumbs.db

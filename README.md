@@ -101,13 +101,19 @@ Sans npm :
 node scripts/serve.js 8080
 ```
 
-> Le serveur local fournit les bons types MIME et permet l'installation PWA. Ouvrir `index.html` en `file://` fonctionne aussi pour jouer, mais le Service Worker est désactivé par le navigateur ; l'IA bascule alors automatiquement sur le thread principal.
+> Le serveur local fournit les bons types MIME et permet l'installation PWA. Sur **ordinateur**, ouvrir `index.html` en `file://` fonctionne aussi pour jouer, mais le Service Worker est désactivé par le navigateur ; l'IA bascule alors automatiquement sur le thread principal. Sur **Android**, utilisez plutôt le build autonome décrit plus bas.
 
 ```bash
-npm test            # 60 tests Node.js
+npm test             # 60 tests Node.js
 npm run test:browser # parcours navigateur headless (Edge/Chrome)
-npm run verify      # tests + intégrité PWA
+npm run verify       # tests + intégrité PWA
+npm run build:offline # génère le fichier HTML unique pour Android
 ```
+
+> **Sur Android, ne copiez pas seulement le dossier.** Ouvrir `index.html` en
+> `file://` bloque le chargement des scripts et du CSS. Utilisez le build
+> autonome ci-dessous, ou hébergez le site en HTTPS et installez la PWA.
+> Guide complet : [`docs/ANDROID.md`](docs/ANDROID.md).
 
 ---
 
@@ -135,15 +141,49 @@ Les règles ci-dessus sont le comportement **par défaut**. Les deux variantes p
 
 Le jeu est une **PWA complète** : manifeste, icônes 192/512, Service Worker avec précache intégral (HTML, CSS, JS, polices, sons, images).
 
-**Sur ordinateur ou mobile** : servez le dossier en HTTPS, ouvrez le site dans Chrome/Edge, puis **Ajouter à l'écran d'accueil**. Vous obtenez une icône, un affichage plein écran et un jeu disponible hors ligne.
+### ⚠️ Avant de copier le dossier sur un téléphone
 
-**Pour obtenir un APK Android** :
+Ce projet est un **site web**, pas une application Android native. Ouvrir
+`index.html` depuis un gestionnaire de fichiers Android charge la page en
+`file://` : **Chrome bloque alors les fichiers voisins** (scripts, CSS, polices,
+sons) et le jeu ne démarre pas. De même, un APK généré par PWABuilder à partir
+d'un dossier ou de `localhost` ne peut pas fonctionner : c'est un simple
+wrapper qui ouvre une URL HTTPS, il ne contient pas le jeu.
 
-1. Publiez le dossier sur un hébergement HTTPS (GitHub Pages par exemple) — un fichier `.nojekyll` est déjà inclus.
-2. Collez l'URL dans [PWABuilder](https://www.pwabuilder.com/) → *Package for stores* → **Android**.
-3. Utilisez un package ID comme `com.lud972vic.checkerslegend` et **conservez la clé de signature générée**.
-4. Déposez le `assetlinks.json` fourni dans `.well-known/` à la racine, puis repoussez le code.
-5. Téléchargez l'APK et installez-le sur le téléphone.
+👉 Guide pas-à-pas et dépannage : **[`docs/ANDROID.md`](docs/ANDROID.md)**
+
+### Option 1 — Fichier unique hors ligne (sans hébergement)
+
+```bash
+npm run build:offline
+```
+
+Génère `dist/checkers-legend-offline.html` (~1,1 Mo) : **un seul fichier** qui
+contient tout (code, styles, polices, images, sons, Worker). Copiez ce fichier
+sur le téléphone et ouvrez-le avec **Chrome** — le jeu fonctionne hors ligne,
+sans serveur et sans installer quoi que ce soit.
+
+### Option 2 — PWA installable (recommandée)
+
+1. Publiez le dossier en HTTPS (GitHub Pages fonctionne, `.nojekyll` est inclus).
+2. Ouvrez l'URL dans Chrome sur le téléphone.
+3. Menu `⋮` → **Ajouter à l'écran d'accueil** / **Installer l'application**.
+4. Après le premier chargement, tout fonctionne **hors ligne**, IA comprise.
+
+Le manifeste utilise des chemins relatifs (`"./"`), donc l'installation
+fonctionne aussi depuis un sous-dossier (`.../JeuxDeDames/`).
+
+### Option 3 — APK via PWABuilder
+
+L'APK obtenu est une **Trusted Web Activity** : il ouvre l'URL de votre PWA.
+Il faut donc **d'abord** la publier en HTTPS, puis générer l'APK **depuis cette
+URL publique** (jamais depuis `localhost`), et déposer le fichier
+`.well-known/assetlinks.json` contenant l'empreinte SHA-256 de la clé de
+signature utilisée. Sans cette liaison, l'APK affiche une barre d'adresse ou
+une page d'erreur. Conservez le keystore généré pour les mises à jour.
+
+Cet APK n'est **pas autonome** : il nécessite un réseau au premier lancement.
+Pour un APK avec fichiers embarqués, voir le guide Android (Capacitor/Cordova).
 
 ---
 
@@ -174,14 +214,15 @@ js/ai-engine.js · ai-worker.js         Minimax, Zobrist, Web Worker
 js/board-renderer.js                   Plateau, pièces, animations
 js/{storage,settings,statistics,audio,animations}-manager.js
 assets/                                Polices, icônes, logo, sons WAV (locaux)
-scripts/                               Serveur, tests navigateur, génération d'assets
+scripts/                               Serveur, tests, génération d'assets, build HTML unique
+dist/                                  Build autonome généré par `npm run build:offline`
 tests/                                 60 tests Node.js
 docs/                                  Architecture, dépendances, rapports, captures
 ```
 
 Aucun module n'a de dépendance distante à l'exécution. Le logo, les icônes et les sons sont régénérés localement par `node scripts/generate-assets.js`.
 
-Documentation technique : [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · [`docs/DEPENDENCY_REPORT.md`](docs/DEPENDENCY_REPORT.md) · [`PROJECT_STATUS.md`](PROJECT_STATUS.md)
+Documentation technique : [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · [`docs/DEPENDENCY_REPORT.md`](docs/DEPENDENCY_REPORT.md) · [`PROJECT_STATUS.md`](PROJECT_STATUS.md) · [`docs/ANDROID.md`](docs/ANDROID.md)
 
 ---
 
