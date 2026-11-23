@@ -333,3 +333,5 @@ de leurs auteurs respectifs.
 ---
 
 **CHECKERS LEGEND 2026** — conçu pour être beau, rapide et jouable partout, même sans réseau.
+#   j e u x - d e - d a m e s  
+ 
