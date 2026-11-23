@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="200" viewBox="0 0 640 200" role="img" aria-label="Checkers Legend 2026">
+  <defs>
+    <linearGradient id="lgViolet" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#e30613"/>
+      <stop offset="0.5" stop-color="#0033a0"/>
+      <stop offset="1" stop-color="#00aef0"/>
+    </linearGradient>
+    <linearGradient id="lgGold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffe082"/>
+      <stop offset="1" stop-color="#d4a017"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Pièce emblème -->
+  <g filter="url(#glow)">
+    <circle cx="100" cy="100" r="66" fill="url(#lgViolet)" stroke="#ffffff" stroke-width="4"/>
+    <circle cx="100" cy="100" r="52" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="2"/>
+    <!-- Couronne -->
+    <path d="M70 118 L70 96 L84 108 L100 86 L116 108 L130 96 L130 118 Z"
+          fill="url(#lgGold)" stroke="#8a5a00" stroke-width="1.5" stroke-linejoin="round"/>
+    <circle cx="84" cy="93" r="4" fill="#fff8e1"/>
+    <circle cx="100" cy="83" r="4.5" fill="#fff8e1"/>
+    <circle cx="116" cy="93" r="4" fill="#fff8e1"/>
+  </g>
+
+  <!-- Texte -->
+  <text x="196" y="92" font-family="Orbitron, 'Segoe UI', sans-serif" font-size="46" font-weight="800"
+        fill="url(#lgViolet)" letter-spacing="2">CHECKERS</text>
+  <text x="196" y="140" font-family="Orbitron, 'Segoe UI', sans-serif" font-size="46" font-weight="800"
+        fill="#ffffff" letter-spacing="10">LEGEND</text>
+  <text x="470" y="140" font-family="Orbitron, 'Segoe UI', sans-serif" font-size="46" font-weight="900"
+        fill="url(#lgGold)" letter-spacing="1">2026</text>
+</svg>

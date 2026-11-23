@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#07070f">
+  <meta name="description" content="CHECKERS LEGEND 2026 — Jeu de dames internationales 10×10 premium avec intelligence artificielle locale (Minimax + Alpha-Bêta). 100 % offline.">
+  <title>CHECKERS LEGEND 2026 — Dames internationales</title>
+
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" href="assets/images/icon-192.png">
+  <link rel="apple-touch-icon" href="assets/images/icon-192.png">
+
+  <link rel="stylesheet" href="vendor/bootstrap/css/bootstrap.min.css">
+  <link rel="stylesheet" href="assets/fonts/fonts.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-theme="neon" data-pieces="neon" data-mode="dark">
+
+  <!-- ===================== DÉCOR DE FOND ===================== -->
+  <div class="bg-scene" aria-hidden="true">
+    <div class="bg-orb bg-orb-1"></div>
+    <div class="bg-orb bg-orb-2"></div>
+    <div class="bg-orb bg-orb-3"></div>
+    <div class="bg-grid"></div>
+    <div class="bg-vignette"></div>
+  </div>
+
+  <!-- ===================== ÉCRAN ACCUEIL ===================== -->
+  <section id="screen-home" class="screen is-active">
+    <header class="top-bar">
+      <div class="brand-mini">
+        <img src="assets/images/logo.svg" alt="Checkers Legend 2026">
+      </div>
+      <div class="top-actions">
+        <button class="icon-btn theme-toggle" id="btn-theme-home" aria-label="Activer le mode clair" title="Mode clair">
+          <span class="icon i-sun theme-icon-sun"></span>
+          <span class="icon i-moon theme-icon-moon"></span>
+        </button>
+        <button class="icon-btn" id="btn-sound-home" aria-label="Activer ou couper le son" title="Son">
+          <span class="icon i-volume"></span>
+        </button>
+        <button class="icon-btn" id="btn-fullscreen-home" aria-label="Plein écran" title="Plein écran">
+          <span class="icon i-fullscreen"></span>
+        </button>
+        <button class="icon-btn" id="btn-achievements" aria-label="Succès" title="Succès">
+          <span class="icon i-medal"></span>
+        </button>
+        <button class="icon-btn" id="btn-settings-home" aria-label="Paramètres" title="Paramètres">
+          <span class="icon i-settings"></span>
+        </button>
+      </div>
+    </header>
+
+    <main class="home-main">
+      <div class="hero">
+        <img class="hero-logo" src="assets/images/logo.svg" alt="CHECKERS LEGEND 2026">
+        <p class="hero-tagline">DAMES INTERNATIONALES 10×10<span class="dot">·</span>IA LOCALE<span class="dot">·</span>100 % OFFLINE</p>
+      </div>
+
+      <div class="player-card glass">
+        <div class="avatar-ring">
+          <span class="icon i-user" id="home-avatar-icon"></span>
+        </div>
+        <div class="player-info">
+          <div class="player-name-row">
+            <span class="player-name" id="player-name">Joueur</span>
+            <span class="level-badge">NIV. <b id="player-level">1</b></span>
+          </div>
+          <div class="xp-bar" role="progressbar" aria-label="Expérience">
+            <div class="xp-fill" id="xp-fill"></div>
+          </div>
+          <div class="xp-text"><span id="xp-current">0</span> / <span id="xp-next">250</span> XP</div>
+        </div>
+        <div class="player-stats-mini">
+          <div class="mini-stat"><b id="stat-wins">0</b><small>Victoires</small></div>
+          <div class="mini-stat"><b id="stat-losses">0</b><small>Défaites</small></div>
+          <div class="mini-stat"><b id="stat-draws">0</b><small>Nuls</small></div>
+          <div class="mini-stat"><b id="stat-best">0</b><small>Record XP</small></div>
+        </div>
+      </div>
+
+      <div class="menu-grid">
+        <button class="menu-btn menu-primary" id="btn-play-ai">
+          <span class="menu-icon"><span class="icon i-cpu"></span></span>
+          <span class="menu-text">
+            <span class="menu-label">JOUER CONTRE L'IA</span>
+            <span class="menu-sub">4 niveaux · Minimax Alpha-Bêta</span>
+          </span>
+          <span class="menu-arrow"><span class="icon i-play"></span></span>
+        </button>
+
+        <button class="menu-btn" id="btn-play-quick">
+          <span class="menu-icon"><span class="icon i-play-circle"></span></span>
+          <span class="menu-text">
+            <span class="menu-label">JOUER MAINTENANT</span>
+            <span class="menu-sub">Partie rapide contre l'IA</span>
+          </span>
+        </button>
+
+        <button class="menu-btn" id="btn-play-pvp">
+          <span class="menu-icon"><span class="icon i-users"></span></span>
+          <span class="menu-text">
+            <span class="menu-label">2 JOUEURS</span>
+            <span class="menu-sub">Sur le même appareil</span>
+          </span>
+        </button>
+
+        <button class="menu-btn" id="btn-howto">
+          <span class="menu-icon"><span class="icon i-help"></span></span>
+          <span class="menu-text">
+            <span class="menu-label">COMMENT JOUER</span>
+            <span class="menu-sub">Règles internationales</span>
+          </span>
+        </button>
+
+        <button class="menu-btn" id="btn-settings">
+          <span class="menu-icon"><span class="icon i-settings"></span></span>
+          <span class="menu-text">
+            <span class="menu-label">PARAMÈTRES</span>
+            <span class="menu-sub">Thèmes · sons · chrono</span>
+          </span>
+        </button>
+
+        <button class="menu-btn" id="btn-puzzles">
+          <span class="menu-icon"><span class="icon i-sparkles"></span></span>
+          <span class="menu-text">
+            <span class="menu-label">PUZZLES</span>
+            <span class="menu-sub">Coup du jour · tactique</span>
+          </span>
+        </button>
+
+        <button class="menu-btn" id="btn-history">
+          <span class="menu-icon"><span class="icon i-history"></span></span>
+          <span class="menu-text">
+            <span class="menu-label">HISTORIQUE</span>
+            <span class="menu-sub">Parties & statistiques</span>
+          </span>
+        </button>
+
+        <button class="menu-btn" id="btn-saves">
+          <span class="menu-icon"><span class="icon i-download"></span></span>
+          <span class="menu-text">
+            <span class="menu-label">SAUVEGARDES</span>
+            <span class="menu-sub">3 emplacements manuels</span>
+          </span>
+        </button>
+      </div>
+
+      <button class="btn-resume hidden" id="btn-resume">
+        <span class="icon i-play-circle"></span>
+        <span>REPRENDRE LA PARTIE EN COURS</span>
+      </button>
+
+      <p class="home-footer">
+        CHECKERS LEGEND 2026 · Version 1.0 · PWA installable · Aucune connexion requise
+        <a class="footer-github" href="https://github.com/Lud972vic" target="_blank" rel="noopener noreferrer" aria-label="Profil GitHub de Lud972vic" title="Profil GitHub"><span class="icon i-github"></span> GitHub</a>
+      </p>
+    </main>
+  </section>
+
+  <!-- ===================== ÉCRAN MODE DE JEU ===================== -->
+  <section id="screen-mode" class="screen">
+    <header class="top-bar">
+      <button class="icon-btn" id="btn-mode-back" aria-label="Retour" title="Retour">
+        <span class="icon i-back"></span>
+      </button>
+      <h1 class="screen-title">NOUVELLE PARTIE</h1>
+      <div class="top-actions"></div>
+    </header>
+
+    <main class="mode-main">
+      <h2 class="section-label"><span class="icon i-cpu"></span> Jouer contre l'IA</h2>
+      <div class="difficulty-grid" id="difficulty-grid">
+        <button class="difficulty-card" data-difficulty="easy">
+          <span class="diff-icon i-pawn"></span>
+          <span class="diff-name">FACILE</span>
+          <span class="diff-desc">Découverte · recherche courte</span>
+          <span class="diff-depth">Profondeur 2</span>
+        </button>
+        <button class="difficulty-card" data-difficulty="normal">
+          <span class="diff-icon i-pawn"></span>
+          <span class="diff-name">NORMAL</span>
+          <span class="diff-desc">Captures et menaces simples</span>
+          <span class="diff-depth">Profondeur 4</span>
+        </button>
+        <button class="difficulty-card" data-difficulty="hard">
+          <span class="diff-icon i-queen"></span>
+          <span class="diff-name">DIFFICILE</span>
+          <span class="diff-desc">Anticipation · stratégie avancée</span>
+          <span class="diff-depth">Profondeur 6</span>
+        </button>
+        <button class="difficulty-card" data-difficulty="expert">
+          <span class="diff-icon i-crown"></span>
+          <span class="diff-name">EXPERT</span>
+          <span class="diff-desc">Recherche profonde · tactique</span>
+          <span class="diff-depth">Profondeur 8–12</span>
+        </button>
+      </div>
+
+      <h2 class="section-label"><span class="icon i-users"></span> Sur le même appareil</h2>
+      <button class="mode-card" id="mode-pvp">
+        <span class="mode-card-icon"><span class="icon i-users"></span></span>
+        <span class="mode-card-text">
+          <b>2 JOUEURS</b>
+          <small>Blancs contre Noirs, chacun son tour</small>
+        </span>
+        <span class="icon i-play"></span>
+      </button>
+
+      <div class="game-options glass">
+        <div class="option-group">
+          <span class="option-label">Votre couleur (contre l'IA)</span>
+          <div class="segmented" id="color-choice">
+            <button class="seg-btn is-active" data-color="white"><span class="icon i-sun"></span> Blancs <small>(commencent)</small></button>
+            <button class="seg-btn" data-color="black"><span class="icon i-moon"></span> Noirs</button>
+          </div>
+        </div>
+        <div class="option-group">
+          <span class="option-label">Chronomètre par joueur</span>
+          <div class="segmented" id="timer-choice">
+            <button class="seg-btn" data-minutes="3"><span class="icon i-timer"></span> 3 min</button>
+            <button class="seg-btn" data-minutes="5"><span class="icon i-timer"></span> 5 min</button>
+            <button class="seg-btn is-active" data-minutes="10"><span class="icon i-timer"></span> 10 min</button>
+            <button class="seg-btn" data-minutes="15"><span class="icon i-timer"></span> 15 min</button>
+            <button class="seg-btn" data-minutes="30"><span class="icon i-timer"></span> 30 min</button>
+            <button class="seg-btn" data-minutes="0"><span class="icon i-clock"></span> ∞</button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </section>
+
+  <!-- ===================== ÉCRAN JEU ===================== -->
+  <section id="screen-game" class="screen">
+    <header class="game-top-bar">
+      <button class="icon-btn" id="btn-quit" aria-label="Quitter la partie" title="Quitter">
+        <span class="icon i-quit"></span>
+      </button>
+      <div class="game-title-wrap">
+        <span class="game-mode-label" id="game-mode-label">VS IA · NORMAL</span>
+        <span class="game-status" id="game-status">Aux Blancs de jouer</span>
+      </div>
+      <div class="top-actions">
+        <button class="icon-btn" id="btn-saves-game" aria-label="Sauvegardes" title="Sauvegardes">
+          <span class="icon i-download"></span>
+        </button>
+        <button class="icon-btn theme-toggle" id="btn-theme-game" aria-label="Activer le mode clair" title="Mode clair">
+          <span class="icon i-sun theme-icon-sun"></span>
+          <span class="icon i-moon theme-icon-moon"></span>
+        </button>
+        <button class="icon-btn" id="btn-sound-game" aria-label="Son" title="Son">
+          <span class="icon i-volume"></span>
+        </button>
+        <button class="icon-btn" id="btn-fullscreen-game" aria-label="Plein écran" title="Plein écran">
+          <span class="icon i-fullscreen"></span>
+        </button>
+      </div>
+    </header>
+
+    <main class="game-layout">
+      <div class="left-column">
+        <!-- Panneau adversaire (haut) -->
+        <aside class="player-panel glass" id="panel-top">
+          <div class="panel-avatar" id="opponent-avatar"><span class="icon i-cpu"></span></div>
+          <div class="panel-details">
+            <div class="panel-name" id="opponent-name">IA · Normal</div>
+            <div class="panel-counts">
+              <span title="Pions"><span class="icon i-pawn"></span><b id="opponent-men">20</b></span>
+              <span title="Dames"><span class="icon i-crown"></span><b id="opponent-kings">0</b></span>
+              <span title="Captures"><span class="icon i-x-circle"></span><b id="opponent-captures">0</b></span>
+            </div>
+          </div>
+          <div class="panel-right">
+            <div class="panel-timer" id="opponent-timer">10:00</div>
+            <div class="turn-pill" id="opponent-turn">EN ATTENTE</div>
+          </div>
+        </aside>
+
+        <div class="quick-rules glass">
+          <div class="quick-rules-head"><span class="icon i-sparkles"></span> RÈGLES ÉCLAIR</div>
+          <ul>
+            <li>Prise obligatoire, avant et arrière.</li>
+            <li>Prise majoritaire prioritaire.</li>
+            <li>Dame volante sur toute la diagonale.</li>
+            <li>Promotion uniquement en fin de rafle.</li>
+          </ul>
+          <div class="quick-rules-foot">Nul : 3 répétitions ou 25 coups sans progrès.</div>
+        </div>
+      </div>
+
+      <!-- Plateau -->
+      <div class="board-column">
+        <div class="board-wrap" id="board-wrap">
+          <div class="board-frame">
+            <div class="board" id="board" role="grid" aria-label="Plateau de dames 10 par 10"></div>
+            <div class="pieces-layer" id="pieces-layer"></div>
+            <canvas class="fx-canvas" id="fx-canvas" aria-hidden="true"></canvas>
+          </div>
+
+          <div class="pause-overlay hidden" id="pause-overlay">
+            <div class="pause-card glass">
+              <span class="icon i-pause pause-icon"></span>
+              <h2>PAUSE</h2>
+              <p>La partie est suspendue.</p>
+              <div class="pause-actions">
+                <button class="btn-premium" id="btn-resume-game">REPRENDRE</button>
+                <button class="btn-ghost" id="btn-pause-quit">QUITTER</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="coach-bar hidden" id="coach-bar">
+          <span class="coach-label"><span class="icon i-sparkles"></span> ÉVALUATION</span>
+          <div class="eval-track">
+            <div class="eval-fill" id="eval-fill"></div>
+            <span class="eval-mid"></span>
+          </div>
+          <span class="coach-score" id="coach-score">0.0</span>
+          <button class="ctrl-btn" id="btn-coach-hint"><span class="icon i-help"></span> Conseil</button>
+        </div>
+
+        <div class="board-controls">
+          <button class="ctrl-btn" id="btn-undo"><span class="icon i-undo"></span><span>Annuler</span></button>
+          <button class="ctrl-btn" id="btn-restart"><span class="icon i-rotate"></span><span>Recommencer</span></button>
+          <button class="ctrl-btn" id="btn-pause"><span class="icon i-pause"></span><span>Pause</span></button>
+        </div>
+
+        <div class="ai-thinking hidden" id="thinking-overlay" role="status" aria-live="polite">
+          <span class="spinner"></span>
+          <span class="thinking-title">L'IA réfléchit…</span>
+          <span class="thinking-stats" id="thinking-stats">Initialisation</span>
+        </div>
+      </div>
+
+      <!-- Panneau joueur + historique -->
+      <aside class="side-panel">
+        <div class="player-panel glass" id="panel-bottom">
+          <div class="panel-avatar" id="player-avatar"><span class="icon i-user"></span></div>
+          <div class="panel-details">
+            <div class="panel-name" id="player-panel-name">Vous</div>
+            <div class="panel-counts">
+              <span title="Pions"><span class="icon i-pawn"></span><b id="player-men">20</b></span>
+              <span title="Dames"><span class="icon i-crown"></span><b id="player-kings">0</b></span>
+              <span title="Captures"><span class="icon i-x-circle"></span><b id="player-captures">0</b></span>
+            </div>
+          </div>
+          <div class="panel-right">
+            <div class="panel-timer" id="player-timer">10:00</div>
+            <div class="turn-pill" id="player-turn">À VOUS</div>
+          </div>
+        </div>
+
+        <div class="history-panel glass">
+          <div class="history-head">
+            <span class="icon i-history"></span>
+            <span>Historique des coups</span>
+            <button class="icon-btn" id="btn-copy-notation" aria-label="Copier la notation des coups" title="Copier la notation"><span class="icon i-download"></span></button>
+          </div>
+          <ol class="history-list" id="history-list"></ol>
+        </div>
+
+        <div class="ai-stats glass hidden" id="ai-stats-panel">
+          <span class="icon i-sparkles"></span>
+          <span>Analyse : profondeur <b id="ai-depth">—</b> · <b id="ai-nodes">—</b> positions · <b id="ai-time">—</b></span>
+        </div>
+      </aside>
+    </main>
+  </section>
+
+  <!-- ===================== MODALE PARAMÈTRES ===================== -->
+  <div class="modal-layer hidden" id="modal-settings" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+    <div class="modal-card glass modal-wide">
+      <header class="modal-head">
+        <h2 id="settings-title"><span class="icon i-settings"></span> PARAMÈTRES</h2>
+        <button class="icon-btn modal-close" data-close="modal-settings" aria-label="Fermer"><span class="icon i-close"></span></button>
+      </header>
+
+      <div class="settings-body">
+        <!-- Aperçu en direct des réglages visuels -->
+        <div class="settings-preview glass">
+          <div class="preview-head">
+            <span class="icon i-sparkles"></span>
+            <span>APERÇU EN DIRECT</span>
+            <span class="preview-badge">Mise à jour instantanée</span>
+          </div>
+          <div class="preview-content">
+            <div class="preview-board" id="preview-board" aria-hidden="true"></div>
+            <div class="preview-info">
+              <p>Thème, style des pions et orientation s'appliquent ici dès votre choix.</p>
+              <button class="btn-ghost btn-block" id="btn-preview-promotion" type="button">
+                <span class="icon i-crown"></span> Voir la promotion
+              </button>
+              <div class="preview-legend">
+                <span><i class="legend-dot legend-white"></i> Pion blanc</span>
+                <span><i class="legend-dot legend-black"></i> Pion noir</span>
+                <span><i class="legend-dot legend-king"></i> Dame</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-grid">
+          <div class="field">
+            <span>Nom du joueur</span>
+            <input type="text" id="set-player-name" maxlength="18" placeholder="Joueur" autocomplete="off">
+          </div>
+
+          <div class="field">
+            <span>Avatar</span>
+            <div class="segmented small" id="avatar-choice">
+              <button class="seg-btn is-active" data-avatar="user" type="button" title="Joueur"><span class="icon i-user"></span></button>
+              <button class="seg-btn" data-avatar="crown" type="button" title="Couronne"><span class="icon i-crown"></span></button>
+              <button class="seg-btn" data-avatar="trophy" type="button" title="Trophée"><span class="icon i-trophy"></span></button>
+              <button class="seg-btn" data-avatar="star" type="button" title="Étoile"><span class="icon i-star"></span></button>
+              <button class="seg-btn" data-avatar="medal" type="button" title="Médaille"><span class="icon i-medal"></span></button>
+              <button class="seg-btn" data-avatar="cpu" type="button" title="Robot"><span class="icon i-cpu"></span></button>
+            </div>
+          </div>
+
+          <div class="field">
+            <span>Mode d'affichage</span>
+            <div class="segmented small" id="mode-choice">
+              <button class="seg-btn is-active" data-mode-value="dark" type="button">
+                <span class="icon i-moon"></span> Sombre
+              </button>
+              <button class="seg-btn" data-mode-value="light" type="button">
+                <span class="icon i-sun"></span> Clair
+              </button>
+            </div>
+          </div>
+
+          <label class="field">
+            <span>Thème du plateau</span>
+            <select id="set-theme">
+              <option value="neon">Néon (défaut)</option>
+              <option value="classic">Bois classique</option>
+              <option value="glass">Verre lumineux</option>
+              <option value="midnight">Minuit bleu</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Couleur des pions</span>
+            <select id="set-pieces">
+              <option value="neon">Néon</option>
+              <option value="classic">Classique</option>
+              <option value="ruby">Rubis</option>
+              <option value="emerald">Émeraude</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Difficulté par défaut</span>
+            <select id="set-difficulty">
+              <option value="easy">Facile</option>
+              <option value="normal">Normal</option>
+              <option value="hard">Difficile</option>
+              <option value="expert">Expert</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Durée du chronomètre</span>
+            <select id="set-timer">
+              <option value="3">3 minutes</option>
+              <option value="5">5 minutes</option>
+              <option value="10">10 minutes</option>
+              <option value="15">15 minutes</option>
+              <option value="30">30 minutes</option>
+              <option value="0">Illimité</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Vitesse des animations</span>
+            <select id="set-anim-speed">
+              <option value="0.5">Lente</option>
+              <option value="1">Normale</option>
+              <option value="1.5">Rapide</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Temps de réflexion IA</span>
+            <select id="set-ai-time">
+              <option value="0">Automatique (selon difficulté)</option>
+              <option value="1000">1 seconde</option>
+              <option value="2000">2 secondes</option>
+              <option value="4000">4 secondes</option>
+              <option value="8000">8 secondes</option>
+            </select>
+          </label>
+
+          <label class="field field-range">
+            <span>Volume sonore <b id="volume-value">70 %</b></span>
+            <input type="range" id="set-volume" min="0" max="100" step="5" value="70">
+          </label>
+
+          <div class="field">
+            <span>Orientation du plateau</span>
+            <div class="segmented small">
+              <button class="seg-btn is-active" data-flip="false"><span class="icon i-rotate"></span> Blancs en bas</button>
+              <button class="seg-btn" data-flip="true"><span class="icon i-rotate"></span> Noirs en bas</button>
+            </div>
+          </div>
+
+          <div class="field toggles">
+            <label class="switch-row">
+              <span class="switch-label"><span class="icon i-volume" id="sound-setting-icon"></span> Sons</span>
+              <input type="checkbox" id="set-sounds" checked>
+              <span class="switch"></span>
+            </label>
+            <label class="switch-row">
+              <span class="switch-label"><span class="icon i-sparkles"></span> Animations</span>
+              <input type="checkbox" id="set-animations" checked>
+              <span class="switch"></span>
+            </label>
+            <label class="switch-row">
+              <span class="switch-label"><span class="icon i-help"></span> Afficher les coups possibles</span>
+              <input type="checkbox" id="set-hints" checked>
+              <span class="switch"></span>
+            </label>
+            <label class="switch-row">
+              <span class="switch-label"><span class="icon i-info"></span> Mode coach (évaluation)</span>
+              <input type="checkbox" id="set-coach">
+              <span class="switch"></span>
+            </label>
+          </div>
+
+          <div class="settings-section">
+            <span>Options non réglementaires</span>
+            <div class="field toggles">
+              <label class="switch-row">
+                <span class="switch-label"><span class="icon i-pawn"></span> Prise non obligatoire</span>
+                <input type="checkbox" id="set-captures-optional">
+                <span class="switch"></span>
+              </label>
+              <label class="switch-row">
+                <span class="switch-label"><span class="icon i-sparkles"></span> Enchaîner les captures (tour bonus)</span>
+                <input type="checkbox" id="set-chain-captures">
+                <span class="switch"></span>
+              </label>
+            </div>
+          </div>
+
+          <div class="field">
+            <span>Affichage</span>
+            <button class="btn-ghost btn-block" id="btn-fullscreen-settings">
+              <span class="icon i-fullscreen"></span> Mode plein écran
+            </button>
+          </div>
+
+          <div class="field">
+            <span>Mes données</span>
+            <div class="data-actions">
+              <button class="btn-ghost btn-block" id="btn-export-data" type="button" title="Télécharger une copie JSON">
+                <span class="icon i-download"></span> Exporter (.json)
+              </button>
+              <button class="btn-ghost btn-block" id="btn-import-data" type="button" title="Charger un fichier JSON">
+                <span class="icon i-upload"></span> Importer (.json)
+              </button>
+              <input type="file" id="import-data-file" accept="application/json,.json" hidden>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-footer">
+          <button class="btn-ghost" id="btn-reset-settings"><span class="icon i-refresh"></span> Réinitialiser</button>
+          <button class="btn-premium" data-close="modal-settings"><span class="icon i-check"></span> TERMINÉ</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== MODALE COMMENT JOUER ===================== -->
+  <div class="modal-layer hidden" id="modal-howto" role="dialog" aria-modal="true" aria-labelledby="howto-title">
+    <div class="modal-card glass modal-wide">
+      <header class="modal-head">
+        <h2 id="howto-title"><span class="icon i-help"></span> COMMENT JOUER</h2>
+        <button class="icon-btn modal-close" data-close="modal-howto" aria-label="Fermer"><span class="icon i-close"></span></button>
+      </header>
+      <div class="howto-body">
+        <div class="howto-grid">
+          <article class="howto-card">
+            <h3><span class="icon i-pawn"></span> Le plateau</h3>
+            <p>Jeu de <b>dames internationales 10×10</b> : 20 pions par joueur sur les cases sombres. Les <b>Blancs commencent</b>.</p>
+          </article>
+          <article class="howto-card">
+            <h3><span class="icon i-play"></span> Déplacements</h3>
+            <p>Les pions avancent d'une case en diagonale. Par défaut, la <b>prise est obligatoire</b> et s'effectue en avant comme en arrière.</p>
+          </article>
+          <article class="howto-card">
+            <h3><span class="icon i-x-circle"></span> Captures</h3>
+            <p>Sautez par-dessus une pièce adverse pour la capturer. Les <b>prises multiples</b> s'enchaînent jusqu'à épuisement, et la <b>prise majoritaire</b> est obligatoire.</p>
+          </article>
+          <article class="howto-card">
+            <h3><span class="icon i-crown"></span> Promotion</h3>
+            <p>Un pion qui <b>termine</b> sur la dernière rangée devient une <b>dame</b> : elle se déplace et capture à distance sur les diagonales.</p>
+          </article>
+          <article class="howto-card">
+            <h3><span class="icon i-sparkles"></span> Options non réglementaires</h3>
+            <p>Dans <b>Paramètres</b> : <b>Prise non obligatoire</b> autorise un déplacement simple même lorsqu'une capture est possible. <b>Enchaîner les captures</b> offre un tour bonus à chaque prise. Ces deux modes sont désactivés par défaut.</p>
+          </article>
+          <article class="howto-card">
+            <h3><span class="icon i-trophy"></span> Victoire</h3>
+            <p>Gagnez en capturant toutes les pièces adverses ou en bloquant l'adversaire. Match nul : triple répétition ou 25 coups sans progression.</p>
+          </article>
+          <article class="howto-card">
+            <h3><span class="icon i-timer"></span> Chronomètre</h3>
+            <p>Chaque joueur dispose d'un temps limité. À zéro, la partie est perdue. Le chronomètre se met en pause avec le bouton Pause.</p>
+          </article>
+        </div>
+        <div class="howto-tip glass">
+          <span class="icon i-sparkles"></span>
+          <p><b>Astuce :</b> cliquez sur une pièce pour voir ses coups légaux. Les cercles lumineux indiquent les destinations, les cibles rouges les pièces capturables.</p>
+        </div>
+        <div class="settings-footer">
+          <button class="btn-premium" data-close="modal-howto"><span class="icon i-check"></span> COMPRIS</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== MODALE PAUSE ===================== -->
+  <div class="modal-layer hidden" id="modal-pause" role="dialog" aria-modal="true" aria-labelledby="pause-title">
+    <div class="modal-card glass modal-narrow">
+      <header class="modal-head">
+        <h2 id="pause-title"><span class="icon i-pause"></span> PARTIE EN PAUSE</h2>
+        <button class="icon-btn modal-close" data-close="modal-pause" aria-label="Fermer"><span class="icon i-close"></span></button>
+      </header>
+      <div class="modal-body">
+        <p class="modal-text">Le chronomètre est suspendu. Reprenez quand vous êtes prêt.</p>
+        <div class="modal-actions">
+          <button class="btn-premium" id="btn-modal-resume"><span class="icon i-play"></span> REPRENDRE</button>
+          <button class="btn-ghost" id="btn-modal-restart"><span class="icon i-rotate"></span> Recommencer</button>
+          <button class="btn-ghost danger" id="btn-modal-quit"><span class="icon i-quit"></span> Quitter</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== MODALE FIN DE PARTIE ===================== -->
+  <div class="modal-layer hidden" id="modal-gameover" role="dialog" aria-modal="true" aria-labelledby="gameover-title">
+    <div class="modal-card glass modal-narrow gameover-card">
+      <div class="gameover-icon" id="gameover-icon"><span class="icon i-trophy"></span></div>
+      <h2 id="gameover-title">VICTOIRE</h2>
+      <p class="gameover-sub" id="gameover-sub">Toutes les pièces adverses ont été capturées.</p>
+      <div class="gameover-stats">
+        <div><b id="go-moves">0</b><small>Coups</small></div>
+        <div><b id="go-duration">0:00</b><small>Durée</small></div>
+        <div><b id="go-captures">0</b><small>Captures</small></div>
+        <div><b id="go-xp">+0</b><small>XP</small></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-premium" id="btn-play-again"><span class="icon i-refresh"></span> REJOUER</button>
+        <button class="btn-ghost" id="btn-gameover-replay"><span class="icon i-play"></span> REVOIR</button>
+        <button class="btn-ghost" id="btn-gameover-menu"><span class="icon i-back"></span> MENU</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== MODALE CONFIRMATION ===================== -->
+  <div class="modal-layer hidden" id="modal-confirm" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+    <div class="modal-card glass modal-narrow">
+      <header class="modal-head">
+        <h2 id="confirm-title"><span class="icon i-info"></span> CONFIRMATION</h2>
+        <button class="icon-btn modal-close" data-close="modal-confirm" aria-label="Fermer"><span class="icon i-close"></span></button>
+      </header>
+      <div class="modal-body">
+        <p class="modal-text" id="confirm-message">Êtes-vous sûr ?</p>
+        <div class="modal-actions">
+          <button class="btn-ghost" id="btn-confirm-cancel"><span class="icon i-close"></span> ANNULER</button>
+          <button class="btn-premium danger" id="btn-confirm-ok"><span class="icon i-check"></span> CONFIRMER</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== MODALE HISTORIQUE ===================== -->
+  <div class="modal-layer hidden" id="modal-history" role="dialog" aria-modal="true" aria-labelledby="history-title">
+    <div class="modal-card glass modal-wide">
+      <header class="modal-head">
+        <h2 id="history-title"><span class="icon i-history"></span> HISTORIQUE DES PARTIES</h2>
+        <button class="icon-btn modal-close" data-close="modal-history" aria-label="Fermer"><span class="icon i-close"></span></button>
+      </header>
+      <div class="history-body">
+        <div class="stats-row" id="history-stats-row"></div>
+        <div class="history-table-wrap">
+          <div class="history-empty" id="history-empty">Aucune partie terminée pour le moment.<br>Lancez votre première partie !</div>
+          <ul class="history-table" id="history-table"></ul>
+        </div>
+        <div class="settings-footer">
+          <button class="btn-premium" data-close="modal-history"><span class="icon i-check"></span> FERMER</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== MODALE SAUVEGARDES ===================== -->
+  <div class="modal-layer hidden" id="modal-saves" role="dialog" aria-modal="true" aria-labelledby="saves-title">
+    <div class="modal-card glass modal-wide">
+      <header class="modal-head">
+        <h2 id="saves-title"><span class="icon i-download"></span> SAUVEGARDES</h2>
+        <button class="icon-btn modal-close" data-close="modal-saves" aria-label="Fermer"><span class="icon i-close"></span></button>
+      </header>
+      <div class="saves-body">
+        <p class="modal-text">Trois emplacements manuels, indépendants de la sauvegarde automatique.</p>
+        <ul class="saves-list" id="saves-list"></ul>
+        <div class="settings-footer">
+          <button class="btn-premium" data-close="modal-saves"><span class="icon i-check"></span> FERMER</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== MODALE SUCCÈS ===================== -->
+  <div class="modal-layer hidden" id="modal-achievements" role="dialog" aria-modal="true" aria-labelledby="achievements-title">
+    <div class="modal-card glass modal-wide">
+      <header class="modal-head">
+        <h2 id="achievements-title"><span class="icon i-medal"></span> SUCCÈS</h2>
+        <button class="icon-btn modal-close" data-close="modal-achievements" aria-label="Fermer"><span class="icon i-close"></span></button>
+      </header>
+      <div class="achievements-body">
+        <p class="modal-text" id="achievements-summary">Aucun succès débloqué pour le moment.</p>
+        <div class="achievements-grid" id="achievements-grid"></div>
+        <div class="settings-footer">
+          <button class="btn-premium" data-close="modal-achievements"><span class="icon i-check"></span> FERMER</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== MODALE PUZZLES ===================== -->
+  <div class="modal-layer hidden" id="modal-puzzles" role="dialog" aria-modal="true" aria-labelledby="puzzles-title">
+    <div class="modal-card glass modal-wide">
+      <header class="modal-head">
+        <h2 id="puzzles-title"><span class="icon i-sparkles"></span> PUZZLES</h2>
+        <button class="icon-btn modal-close" data-close="modal-puzzles" aria-label="Fermer"><span class="icon i-close"></span></button>
+      </header>
+      <div class="puzzles-body">
+        <div class="puzzle-board-wrap">
+          <div class="board-frame">
+            <div class="board" id="puzzle-board" role="grid" aria-label="Plateau du puzzle"></div>
+            <div class="pieces-layer" id="puzzle-pieces"></div>
+          </div>
+        </div>
+        <div class="puzzle-side">
+          <div class="puzzle-head-row">
+            <span class="puzzle-level" id="puzzle-level">DÉBUTANT</span>
+            <span class="puzzle-progress" id="puzzle-progress">0 / 1 coups</span>
+          </div>
+          <h3 class="puzzle-title" id="puzzle-title">Puzzle</h3>
+          <p class="puzzle-desc" id="puzzle-desc">Trouvez le meilleur coup.</p>
+          <div class="puzzle-feedback" id="puzzle-feedback">À vous de jouer.</div>
+          <div class="puzzle-actions">
+            <button class="btn-ghost" id="btn-puzzle-hint"><span class="icon i-help"></span> Indice</button>
+            <button class="btn-ghost" id="btn-puzzle-reset"><span class="icon i-refresh"></span> Recommencer</button>
+          </div>
+          <label class="field">
+            <span>Choisir un puzzle</span>
+            <select id="puzzle-select"></select>
+          </label>
+          <button class="btn-ghost btn-block" id="btn-puzzle-daily"><span class="icon i-star"></span> Coup du jour</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== MODALE REPLAY ===================== -->
+  <div class="modal-layer hidden" id="modal-replay" role="dialog" aria-modal="true" aria-labelledby="replay-title">
+    <div class="modal-card glass modal-wide">
+      <header class="modal-head">
+        <h2 id="replay-title"><span class="icon i-play"></span> REPLAY DE LA PARTIE</h2>
+        <button class="icon-btn modal-close" data-close="modal-replay" aria-label="Fermer"><span class="icon i-close"></span></button>
+      </header>
+      <div class="replay-body">
+        <div class="replay-board-wrap">
+          <div class="board-frame">
+            <div class="board" id="replay-board" role="grid" aria-label="Plateau du replay"></div>
+            <div class="pieces-layer" id="replay-pieces"></div>
+          </div>
+        </div>
+        <div class="replay-side">
+          <div class="replay-status"><b id="replay-ply">0 / 0</b><span id="replay-move-label">Position initiale</span></div>
+          <ol class="replay-moves" id="replay-moves"></ol>
+        </div>
+      </div>
+      <div class="replay-controls">
+        <button class="ctrl-btn" id="btn-replay-first" title="Début"><span class="icon i-back"></span></button>
+        <button class="ctrl-btn" id="btn-replay-prev" title="Coup précédent"><span class="icon i-undo"></span></button>
+        <button class="btn-premium" id="btn-replay-play"><span class="icon i-play"></span> LECTURE</button>
+        <button class="ctrl-btn" id="btn-replay-next" title="Coup suivant"><span class="icon i-play"></span></button>
+        <button class="ctrl-btn" id="btn-replay-last" title="Fin"><span class="icon i-refresh"></span></button>
+        <input type="range" id="replay-slider" min="0" max="0" value="0" aria-label="Avancer dans la partie">
+        <select id="replay-speed" class="replay-speed" aria-label="Vitesse de lecture">
+          <option value="900">Lente</option>
+          <option value="550" selected>Normale</option>
+          <option value="280">Rapide</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notifications -->
+  <div class="toast-container" id="toasts" aria-live="polite"></div>
+
+  <!-- ===================== SCRIPTS ===================== -->
+  <script src="vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <script src="config/game-config.js"></script>
+  <script src="js/game-rules.js"></script>
+  <script src="js/game-engine.js"></script>
+  <script src="js/storage-manager.js"></script>
+  <script src="js/settings-manager.js"></script>
+  <script src="js/statistics.js"></script>
+  <script src="js/audio-manager.js"></script>
+  <script src="js/animations.js"></script>
+  <script src="js/board-renderer.js"></script>
+  <script src="js/puzzles.js"></script>
+  <script src="js/ai-engine.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
