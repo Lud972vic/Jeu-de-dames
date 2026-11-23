@@ -4,7 +4,7 @@
 
 # CHECKERS LEGEND 2026
 
-### Le jeu de dames international qui respecte les règles — et votre vie privée.
+### Le jeu de dames international qui ne respecte pas les règles — mais votre vie privée.
 
 **10×10 · IA locale · 100 % hors ligne · PWA & Android · Zéro serveur**
 
