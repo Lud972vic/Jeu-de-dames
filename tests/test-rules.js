@@ -3,8 +3,34 @@
  * Exécution : node --test tests/
  * Aucune dépendance externe (node:test + node:assert natifs).
  */
+/**
+ * NOTE PÉDAGOGIQUE (débutant)
+ *
+ * Ce fichier vérifie le moteur de règles des dames : plateau de départ,
+ * déplacements simples, captures, promotion, fin de partie, puis le moteur
+ * de partie (alternance, annulation, sauvegarde, notation).
+ *
+ * node:test est le lanceur de tests intégré à Node.js. Chaque appel à
+ * test('titre', () => { ... }) décrit un scénario ; le titre ne doit jamais
+ * changer car les documents du projet le citent. describe est un outil du
+ * même module qui permettrait de regrouper plusieurs tests ; ici les tests
+ * sont écrits directement, sans regroupement. assert (node:assert/strict)
+ * compare le résultat attendu au résultat obtenu : si une vérification est
+ * fausse, le test échoue et indique la ligne concernée.
+ *
+ * Lancer ce seul fichier : node --test tests/test-rules.js
+ *
+ * Concepts JS utilisés : require() charge des modules CommonJS (leurs
+ * fonctions sont exportées avec module.exports), Map compte les positions,
+ * slice() copie un plateau, et Math.imul fabrique un générateur aléatoire
+ * reproductible pour les simulations de parties.
+ */
 'use strict';
 
+/**
+ * On importe le lanceur de tests, la bibliothèque de vérifications, puis
+ * les modules du jeu à tester (configuration, règles et moteur de partie).
+ */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -12,9 +38,21 @@ const CFG = require('../config/game-config.js');
 const Rules = require('../js/game-rules.js');
 const GameEngine = require('../js/game-engine.js');
 
+/**
+ * Raccourcis pour les quatre types de pièces : pion ou dame, blanc ou noir.
+ */
 const W = CFG.WHITE_MAN, WK = CFG.WHITE_KING, B = CFG.BLACK_MAN, BK = CFG.BLACK_KING;
+/**
+ * Convertit une position (ligne, colonne) en un numéro de case unique.
+ * Le plateau est un tableau « plat » de 100 cases : cette fonction évite
+ * de répéter le calcul ligne * 10 + colonne partout dans les tests.
+ */
 const sq = (r, c) => r * 10 + c;
 
+/**
+ * Garde seulement les coups qui partent de la case indiquée. Cela rend les
+ * assertations plus lisibles quand on vérifie tous les coups d’une même pièce.
+ */
 function movesFrom(moves, from) {
   return moves.filter(m => m.from === from);
 }
@@ -23,6 +61,12 @@ function movesFrom(moves, from) {
  * 1. Plateau initial
  * ============================================================ */
 
+/**
+ * Scénario : on crée le plateau de départ et on compte les pièces.
+ * Pourquoi : une configuration de départ fausse rendrait toute la partie fausse.
+ * Assertions : 20 pions par camp, tous simples, et 9 coups possibles pour
+ * les blancs au premier tour.
+ */
 test('Plateau initial : 20 pions par joueur, Blancs au trait', () => {
   const board = Rules.createInitialBoard();
   assert.equal(Rules.countPieces(board, CFG.WHITE).total, 20);
@@ -34,6 +78,11 @@ test('Plateau initial : 20 pions par joueur, Blancs au trait', () => {
   assert.equal(moves.length, 9);
 });
 
+/**
+ * Scénario : on parcourt les 100 cases du plateau initial.
+ * Pourquoi : aux dames, seules les cases sombres sont utilisées.
+ * Assertions : toute case claire (ligne + colonne paire) doit être vide.
+ */
 test('Cases jouables : uniquement les cases sombres', () => {
   const board = Rules.createInitialBoard();
   for (let r = 0; r < 10; r++) {
@@ -48,6 +97,11 @@ test('Cases jouables : uniquement les cases sombres', () => {
  * 2. Déplacements simples
  * ============================================================ */
 
+/**
+ * Scénario : un seul pion blanc, sans adversaire.
+ * Pourquoi : un pion avance uniquement en diagonale vers le haut.
+ * Assertions : deux coups seulement, vers (7,3) et (7,5), et aucun n’est une prise.
+ */
 test('Pion blanc : déplacement diagonal avant uniquement', () => {
   const board = Rules.boardFromPieces({ [W]: [sq(8, 4)] });
   const moves = Rules.getLegalMoves(board, CFG.WHITE);
@@ -57,6 +111,11 @@ test('Pion blanc : déplacement diagonal avant uniquement', () => {
   assert.ok(from.every(m => !m.isCapture));
 });
 
+/**
+ * Scénario : un seul pion noir au milieu du plateau.
+ * Pourquoi : le pion noir avance en diagonale vers le bas, sens opposé.
+ * Assertions : ses deux destinations sont (2,3) et (2,5).
+ */
 test('Pion noir : déplacement diagonal avant (vers le bas)', () => {
   const board = Rules.boardFromPieces({ [B]: [sq(1, 4)] });
   const moves = Rules.getLegalMoves(board, CFG.BLACK);
@@ -64,12 +123,22 @@ test('Pion noir : déplacement diagonal avant (vers le bas)', () => {
   assert.deepEqual(from.map(m => m.to).sort(), [sq(2, 3), sq(2, 5)].sort());
 });
 
+/**
+ * Scénario : une dame blanche seule sur la dernière ligne.
+ * Pourquoi : la dame glisse loin sur la diagonale, contrairement au pion.
+ * Assertions : elle propose 9 destinations différentes depuis la case (9,4).
+ */
 test('Dame : déplacement à distance sur toute la diagonale', () => {
   const board = Rules.boardFromPieces({ [WK]: [sq(9, 4)] });
   const moves = Rules.getLegalMoves(board, CFG.WHITE);
   assert.equal(moves.length, 9); // 4 vers le haut-gauche + 5 vers le haut-droit
 });
 
+/**
+ * Scénario : une dame et un pion de son camp sur sa diagonale.
+ * Pourquoi : on ne peut ni traverser une pièce amie, ni s’y poser.
+ * Assertions : le coup juste avant est autorisé ; la case amie et celles au-delà sont interdites.
+ */
 test('Dame : bloquée par une pièce amie', () => {
   const board = Rules.boardFromPieces({ [WK]: [sq(9, 4)], [W]: [sq(7, 2)] });
   const moves = Rules.getLegalMoves(board, CFG.WHITE);
@@ -84,6 +153,11 @@ test('Dame : bloquée par une pièce amie', () => {
  * 3. Captures
  * ============================================================ */
 
+/**
+ * Scénario : un pion blanc peut prendre un pion noir ou avancer tranquillement.
+ * Pourquoi : en règle officielle, dès qu’une prise existe, elle est obligatoire.
+ * Assertions : un seul coup est proposé, la prise de (5,4) vers (3,2) qui retire (4,3).
+ */
 test('Capture obligatoire : aucun déplacement simple si une prise existe', () => {
   const board = Rules.boardFromPieces({
     [W]: [sq(5, 4), sq(8, 1)],
@@ -96,6 +170,12 @@ test('Capture obligatoire : aucun déplacement simple si une prise existe', () =
   assert.deepEqual(moves[0].captures, [sq(4, 3)]);
 });
 
+/**
+ * Scénario : même position, mais avec l’option « prises facultatives ».
+ * Pourquoi : le jeu peut aussi laisser choisir ; il faut vérifier les deux modes.
+ * Assertions : la prise reste proposée, les déplacements simples reviennent,
+ * et la priorité à la séquence la plus longue est conservée.
+ */
 test('Option non réglementaire : prise non obligatoire ajoute les déplacements simples', () => {
   const board = Rules.boardFromPieces({
     [W]: [sq(5, 4), sq(8, 1)],
@@ -112,6 +192,12 @@ test('Option non réglementaire : prise non obligatoire ajoute les déplacements
   assert.ok(moves.every(m => !m.isCapture || m.captures.length === 1));
 });
 
+/**
+ * Scénario : une prise avec l’option « enchaînement » activée.
+ * Pourquoi : certaines variantes laissent le joueur garder la main après une prise.
+ * Assertions : le coup est joué, le joueur reste blanc, et l’option est bien
+ * relue après une sauvegarde puis un rechargement.
+ */
 test('Option non réglementaire : capturer conserve le tour (tour bonus)', () => {
   const engine = new GameEngine();
   engine.newGame({ mode: 'pvp', chainCaptures: true });
@@ -131,6 +217,11 @@ test('Option non réglementaire : capturer conserve le tour (tour bonus)', () =>
   assert.equal(restored.ruleOptions.capturesOptional, false);
 });
 
+/**
+ * Scénario : un pion blanc a un adversaire juste derrière lui.
+ * Pourquoi : la règle internationale autorise la prise vers l’arrière.
+ * Assertions : un seul coup, jusqu’en (7,6), qui capture le pion en (6,5).
+ */
 test('Pion : capture vers l’arrière autorisée (règle internationale)', () => {
   const board = Rules.boardFromPieces({
     [W]: [sq(5, 4)],
@@ -142,6 +233,12 @@ test('Pion : capture vers l’arrière autorisée (règle internationale)', () =
   assert.deepEqual(moves[0].captures, [sq(6, 5)]);
 });
 
+/**
+ * Scénario : deux pions noirs alignés sur la diagonale d’un pion blanc.
+ * Pourquoi : une prise peut s’enchaîner tant qu’une cible reste atteignable.
+ * Assertions : les deux pièces sont prises, et le chemin ainsi que la case
+ * finale sont exacts.
+ */
 test('Pion : prise multiple enchaînée jusqu’à épuisement', () => {
   const board = Rules.boardFromPieces({
     [W]: [sq(5, 4)],
@@ -154,6 +251,11 @@ test('Pion : prise multiple enchaînée jusqu’à épuisement', () => {
   assert.equal(moves[0].to, sq(1, 0));
 });
 
+/**
+ * Scénario : deux pions blancs peuvent prendre des séquences de longueurs différentes.
+ * Pourquoi : la règle impose de capturer le plus de pièces possible.
+ * Assertions : un seul coup légal, celui qui prend deux pièces depuis (5,4).
+ */
 test('Prise majoritaire : seule la séquence maximale est légale', () => {
   const board = Rules.boardFromPieces({
     [W]: [sq(5, 4), sq(5, 6)],
@@ -166,6 +268,11 @@ test('Prise majoritaire : seule la séquence maximale est légale', () => {
   assert.deepEqual(moves[0].captures, [sq(4, 3), sq(2, 1)]);
 });
 
+/**
+ * Scénario : deux pions blancs peuvent chacun prendre un seul pion adverse.
+ * Pourquoi : en cas d’égalité, toutes les séquences maximales sont autorisées.
+ * Assertions : deux coups sont proposés, chacun avec une seule capture.
+ */
 test('Prise majoritaire : égalité => toutes les séquences maximales autorisées', () => {
   const board = Rules.boardFromPieces({
     [W]: [sq(5, 4), sq(5, 6)],
@@ -176,6 +283,11 @@ test('Prise majoritaire : égalité => toutes les séquences maximales autorisé
   assert.ok(moves.every(m => m.captures.length === 1));
 });
 
+/**
+ * Scénario : une dame blanche peut sauter par-dessus un pion noir éloigné.
+ * Pourquoi : la dame capture à distance, comme elle se déplace.
+ * Assertions : un seul coup, atterrissage en (1,0) et capture du pion en (2,1).
+ */
 test('Dame : capture à distance', () => {
   const board = Rules.boardFromPieces({
     [WK]: [sq(5, 4)],
@@ -187,6 +299,11 @@ test('Dame : capture à distance', () => {
   assert.deepEqual(moves[0].captures, [sq(2, 1)]);
 });
 
+/**
+ * Scénario : une dame prend deux pions avec plusieurs cases d’atterrissage.
+ * Pourquoi : après la première prise, plusieurs cases libres restent possibles.
+ * Assertions : plusieurs coups, tous avec les mêmes deux captures dans le même ordre.
+ */
 test('Dame : capture multiple avec choix de la case d’atterrissage', () => {
   const board = Rules.boardFromPieces({
     [WK]: [sq(9, 4)],
@@ -198,6 +315,12 @@ test('Dame : capture multiple avec choix de la case d’atterrissage', () => {
   assert.ok(moves.every(m => m.captures[0] === sq(7, 2) && m.captures[1] === sq(4, 3)));
 });
 
+/**
+ * Scénario : une dame enchaîne quatre prises sur une même diagonale.
+ * Pourquoi : les pions adversaires se suivent ; la dame doit s’arrêter juste après chacun.
+ * Assertions : les quatre captures, les quatre cases d’atterrissage et la case
+ * finale sont exactement celles attendues.
+ */
 test('Dame : enchaînement forcé de captures sur la grande diagonale', () => {
   // La dame capture 72, 54, 36 puis 18 ; elle doit atterrir sur la seule case
   // libre au-delà de chaque pièce (les suivantes sont occupées).
@@ -216,6 +339,11 @@ test('Dame : enchaînement forcé de captures sur la grande diagonale', () => {
  * 4. Promotion
  * ============================================================ */
 
+/**
+ * Scénario : un pion blanc atteint la dernière rangée en capturant.
+ * Pourquoi : un pion arrivé au bout du plateau devient une dame.
+ * Assertions : le coup signale une promotion et la case finale contient une dame blanche.
+ */
 test('Promotion : un pion terminant sur la dernière rangée devient dame', () => {
   const board = Rules.boardFromPieces({
     [W]: [sq(2, 1)],
@@ -228,6 +356,11 @@ test('Promotion : un pion terminant sur la dernière rangée devient dame', () =
   assert.equal(after[sq(0, 3)], CFG.WHITE_KING);
 });
 
+/**
+ * Scénario : le pion continue sa prise multiple après être passé par la dernière rangée.
+ * Pourquoi : la promotion n’a lieu qu’à la fin de la séquence, pas en cours de route.
+ * Assertions : aucune promotion n’est signalée et le pion reste un pion simple.
+ */
 test('Promotion interdite en cours de prise multiple', () => {
   const board = Rules.boardFromPieces({
     [W]: [sq(2, 1)],
@@ -246,6 +379,11 @@ test('Promotion interdite en cours de prise multiple', () => {
  * 5. Victoire / match nul
  * ============================================================ */
 
+/**
+ * Scénario : un camp n’a plus aucune pièce.
+ * Pourquoi : c’est une façon simple de terminer la partie.
+ * Assertions : partie terminée, vainqueur blanc, raison « no-pieces ».
+ */
 test('Victoire : adversaire sans pièces', () => {
   const board = Rules.boardFromPieces({ [WK]: [sq(5, 4)] });
   const status = Rules.getGameStatus(board, CFG.BLACK, {});
@@ -254,6 +392,11 @@ test('Victoire : adversaire sans pièces', () => {
   assert.equal(status.reason, 'no-pieces');
 });
 
+/**
+ * Scénario : un pion noir ne peut ni avancer ni prendre.
+ * Pourquoi : un joueur bloqué perd même s’il lui reste des pièces.
+ * Assertions : partie terminée, vainqueur blanc, raison « no-moves ».
+ */
 test('Victoire : adversaire bloqué (aucun coup légal)', () => {
   const board = Rules.boardFromPieces({
     [B]: [sq(1, 0)],
@@ -265,6 +408,12 @@ test('Victoire : adversaire bloqué (aucun coup légal)', () => {
   assert.equal(status.reason, 'no-moves');
 });
 
+/**
+ * Scénario : deux dames rejouent deux fois le même cycle de quatre coups.
+ * Pourquoi : cela évite les parties infinies ; la troisième répétition donne nul.
+ * Assertions : chaque coup du cycle est légal, puis le statut est un nul
+ * avec la raison « repetition ».
+ */
 test('Match nul : triple répétition de position', () => {
   const engine = new GameEngine();
   engine.newGame({ mode: 'pvp' });
@@ -298,6 +447,11 @@ test('Match nul : triple répétition de position', () => {
   assert.equal(engine.status.reason, 'repetition');
 });
 
+/**
+ * Scénario : même cycle, mais avec une limite de 6 demi-coups sans progrès.
+ * Pourquoi : c’est une sécurité contre les parties qui n’avancent jamais.
+ * Assertions : au moins 6 demi-coups sont joués, puis nul avec la raison « no-progress ».
+ */
 test('Match nul : limitation des coups sans progression', () => {
   const config = JSON.parse(JSON.stringify(CFG));
   config.DRAW.MAX_PLIES_WITHOUT_PROGRESS = 6;
@@ -340,6 +494,11 @@ test('Match nul : limitation des coups sans progression', () => {
  * 6. Moteur de partie : alternance, coups illégaux, undo, sérialisation
  * ============================================================ */
 
+/**
+ * Scénario : on joue un coup légal au début d’une partie.
+ * Pourquoi : le moteur doit passer la main automatiquement à l’autre joueur.
+ * Assertions : blanc au départ, noir après le coup.
+ */
 test('Alternance automatique des joueurs', () => {
   const engine = new GameEngine();
   engine.newGame({ mode: 'pvp' });
@@ -349,6 +508,11 @@ test('Alternance automatique des joueurs', () => {
   assert.equal(engine.currentPlayer, CFG.BLACK);
 });
 
+/**
+ * Scénario : on soumet au moteur un coup avec des cases hors du plateau.
+ * Pourquoi : les coups impossibles doivent être refusés sans rien changer.
+ * Assertions : résultat « ok » faux, historique vide et joueur toujours blanc.
+ */
 test('Coup illégal rejeté par le moteur', () => {
   const engine = new GameEngine();
   engine.newGame({ mode: 'pvp' });
@@ -358,6 +522,12 @@ test('Coup illégal rejeté par le moteur', () => {
   assert.equal(engine.currentPlayer, CFG.WHITE);
 });
 
+/**
+ * Scénario : on joue un coup, puis on l’annule.
+ * Pourquoi : l’annulation doit rendre exactement l’état précédent.
+ * Assertions : plateau identique à l’initial, joueur blanc, historique vide,
+ * et aucune autre annulation possible.
+ */
 test('Annulation (undo) : restaure plateau, joueur et compteurs', () => {
   const engine = new GameEngine();
   engine.newGame({ mode: 'pvp' });
@@ -373,6 +543,11 @@ test('Annulation (undo) : restaure plateau, joueur et compteurs', () => {
   assert.equal(engine.canUndo(), false);
 });
 
+/**
+ * Scénario : une partie en cours est transformée en données puis rechargée.
+ * Pourquoi : la sauvegarde doit conserver tout l’état de la partie.
+ * Assertions : plateau, joueur, historique, mode, difficulté et couleur du joueur sont identiques.
+ */
 test('Sérialisation / rechargement : état identique', () => {
   const engine = new GameEngine();
   engine.newGame({ mode: 'ai', difficulty: 'hard', playerColor: CFG.BLACK });
@@ -391,6 +566,12 @@ test('Sérialisation / rechargement : état identique', () => {
   assert.equal(restored.playerColor, CFG.BLACK);
 });
 
+/**
+ * Scénario : trois parties jouées au hasard avec un générateur reproductible.
+ * Pourquoi : une partie doit toujours se terminer, quoi que choisisse le hasard.
+ * Assertions : les coups proposés sont acceptés, la fin a une raison connue,
+ * et l’historique contient exactement le nombre de coups joués.
+ */
 test('Parties complètes : trois simulations aléatoires se terminent proprement', () => {
   const reasons = new Set(['no-pieces', 'no-moves', 'repetition', 'no-progress']);
   for (let seed = 1; seed <= 3; seed++) {
@@ -423,6 +604,11 @@ test('Parties complètes : trois simulations aléatoires se terminent proprement
   }
 });
 
+/**
+ * Scénario : on convertit un déplacement simple et une prise en texte lisible.
+ * Pourquoi : cette notation sert aux joueurs et aux sauvegardes de parties.
+ * Assertions : la prise donne trois numéros séparés par « x », le simple deux séparés par « - ».
+ */
 test('Notation des coups : déplacement et prise', () => {
   const board = Rules.boardFromPieces({
     [W]: [sq(5, 4)],

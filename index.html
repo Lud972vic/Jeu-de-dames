@@ -1,4 +1,19 @@
 <!DOCTYPE html>
+<!--
+  Petit guide pour lire ce fichier (les commentaires ne s'affichent pas dans le jeu) :
+  - Une balise est une instruction entourée de chevrons, comme <head> ou <body>.
+    La plupart vont par paire : une balise ouvrante et une balise fermante.
+  - Un attribut est une information placée dans la balise ouvrante, par exemple
+    lang="fr" ou class="screen". Il précise le rôle ou l'apparence.
+  - Une classe (class) est une étiquette réutilisable : plusieurs éléments peuvent
+    la partager et une même règle CSS s'applique alors à tous.
+  - L'imbrication veut dire qu'une balise peut en contenir d'autres : <body>
+    contient les écrans, qui contiennent eux-mêmes des boutons.
+  - Un identifiant (attribut id) nomme un élément de façon unique dans la page.
+    Le JavaScript s'en sert pour retrouver précisément cet élément.
+  - Un bouton (<button>) est l'élément cliquable ; c'est le JavaScript qui décide
+    de l'action à accomplir quand on appuie dessus.
+-->
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
@@ -18,6 +33,10 @@
 <body data-theme="neon" data-pieces="neon" data-mode="dark">
 
   <!-- ===================== DÉCOR DE FOND ===================== -->
+  <!-- Le décor reste derrière le contenu et ne capte aucun clic. L'attribut
+       aria-hidden demande aux lecteurs d'écran d'ignorer ces éléments purement
+       décoratifs. La balise <canvas> est vide ici : c'est le JavaScript qui
+       dessine les particules dedans après le chargement de la page. -->
   <div class="bg-scene" aria-hidden="true">
     <canvas class="bg-particles" id="bg-particles"></canvas>
     <div class="bg-orb bg-orb-1"></div>
@@ -28,6 +47,13 @@
   </div>
 
   <!-- ===================== ÉCRAN ACCUEIL ===================== -->
+  <!-- L'accueil est une section qui occupe toute la fenêtre. Les écrans
+       partagent la classe screen ; seule la classe is-active rend celui-ci
+       visible, les autres restant masqués par la feuille de style.
+       La carte du joueur affiche son nom, son niveau et son expérience ; sa
+       barre de progression porte des attributs aria pour être décrite aux
+       technologies d'assistance. Le menu est une liste de boutons : chacun a
+       un identifiant unique que le JavaScript utilise pour réagir au clic. -->
   <section id="screen-home" class="screen is-active">
     <header class="top-bar">
       <div class="brand-mini">
@@ -169,6 +195,11 @@
   </section>
 
   <!-- ===================== ÉCRAN MODE DE JEU ===================== -->
+  <!-- On prépare ici la partie : difficulté de l'IA, adversaire humain,
+       couleur et chronomètre. Les attributs data-difficulty, data-color ou
+       data-minutes sont des informations libres attachées aux boutons : le
+       JavaScript les lit pour connaître le choix effectué, sans changer le
+       texte affiché à l'écran. -->
   <section id="screen-mode" class="screen">
     <header class="top-bar">
       <button class="icon-btn" id="btn-mode-back" aria-label="Retour" title="Retour">
@@ -241,6 +272,13 @@
   </section>
 
   <!-- ===================== ÉCRAN JEU ===================== -->
+  <!-- Écran de la partie en cours. La classe glass produit un effet de verre
+       dépoli. Le plateau est une grille de dix cases par dix ; les pions sont
+       ajoutés par le JavaScript dans la couche prévue à cet effet, au-dessus
+       des cases. Les attributs role (grid) et aria-label donnent un nom et un
+       rôle accessible au plateau. Les zones aria-live signalent les changements
+       importants (tour de l'adversaire, réflexion de l'IA) à annoncer à voix
+       haute sans que le joueur ait à cliquer. -->
   <section id="screen-game" class="screen">
     <header class="game-top-bar">
       <button class="icon-btn" id="btn-quit" aria-label="Quitter la partie" title="Quitter">
@@ -270,6 +308,8 @@
     <main class="game-layout">
       <div class="left-column">
         <!-- Panneau adversaire (haut) -->
+        <!-- Ce panneau résume l'adversaire : nom, pions, dames, captures,
+             chronomètre et pastille indiquant à qui est le tour. -->
         <aside class="player-panel glass" id="panel-top">
           <div class="panel-avatar" id="opponent-avatar"><span class="icon i-cpu"></span></div>
           <div class="panel-details">
@@ -299,6 +339,9 @@
       </div>
 
       <!-- Plateau -->
+      <!-- Trois calques superposés : les cases du plateau, les pièces et un
+           canevas d'effets réservé aux animations (aria-hidden pour ce
+           dernier, car il ne contient aucune information utile). -->
       <div class="board-column">
         <div class="board-wrap" id="board-wrap">
           <div class="board-frame">
@@ -344,6 +387,8 @@
       </div>
 
       <!-- Panneau joueur + historique -->
+      <!-- Même genre de panneau que pour l'adversaire, avec en plus la liste
+           des coups joués et les statistiques de réflexion de l'IA. -->
       <aside class="side-panel">
         <div class="player-panel glass" id="panel-bottom">
           <div class="panel-avatar" id="player-avatar"><span class="icon i-user"></span></div>
@@ -379,6 +424,12 @@
   </section>
 
   <!-- ===================== MODALE PARAMÈTRES ===================== -->
+  <!-- Une modale est une fenêtre qui s'ouvre par-dessus l'écran en cours.
+       Les attributs role="dialog" et aria-modal="true" la signalent comme
+       boîte de dialogue : le reste de la page est ignoré jusqu'à sa fermeture.
+       aria-labelledby indique quel titre sert de nom à cette fenêtre.
+       La classe hidden la masque tant qu'on ne l'a pas demandée : le
+       JavaScript retire simplement cette classe pour l'afficher. -->
   <div class="modal-layer hidden" id="modal-settings" role="dialog" aria-modal="true" aria-labelledby="settings-title">
     <div class="modal-card glass modal-wide">
       <header class="modal-head">
@@ -388,6 +439,9 @@
 
       <div class="settings-body">
         <!-- Aperçu en direct des réglages visuels -->
+        <!-- Ce mini-plateau montre tout de suite l'effet des réglages de thème,
+             de style de pions et d'orientation, avant même de lancer une
+             partie. -->
         <div class="settings-preview glass">
           <div class="preview-head">
             <span class="icon i-sparkles"></span>
@@ -598,6 +652,9 @@
   </div>
 
   <!-- ===================== MODALE COMMENT JOUER ===================== -->
+  <!-- Fenêtre d'aide découpée en courtes cartes. Les boutons de fermeture
+       portent un attribut data-close : le JavaScript lit sa valeur pour savoir
+       quelle modale fermer, au lieu d'écrire un gestionnaire par fenêtre. -->
   <div class="modal-layer hidden" id="modal-howto" role="dialog" aria-modal="true" aria-labelledby="howto-title">
     <div class="modal-card glass modal-wide">
       <header class="modal-head">
@@ -647,6 +704,8 @@
   </div>
 
   <!-- ===================== MODALE PAUSE ===================== -->
+  <!-- Affichée quand la partie est suspendue : le chronomètre s'arrête et
+       trois actions sont proposées (reprendre, recommencer, quitter). -->
   <div class="modal-layer hidden" id="modal-pause" role="dialog" aria-modal="true" aria-labelledby="pause-title">
     <div class="modal-card glass modal-narrow">
       <header class="modal-head">
@@ -665,6 +724,9 @@
   </div>
 
   <!-- ===================== MODALE FIN DE PARTIE ===================== -->
+  <!-- Écran de résultat : victoire, défaite ou nul. Les chiffres affichés sont
+       des valeurs provisoires que le JavaScript remplace à la fin de la
+       partie. -->
   <div class="modal-layer hidden" id="modal-gameover" role="dialog" aria-modal="true" aria-labelledby="gameover-title">
     <div class="modal-card glass modal-narrow gameover-card">
       <div class="gameover-icon" id="gameover-icon"><span class="icon i-trophy"></span></div>
@@ -685,6 +747,9 @@
   </div>
 
   <!-- ===================== MODALE CONFIRMATION ===================== -->
+  <!-- Fenêtre de confirmation réutilisable : le texte et les deux actions
+       sont choisis par le JavaScript selon l'opération demandée par le
+       joueur (quitter, réinitialiser, etc.). -->
   <div class="modal-layer hidden" id="modal-confirm" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
     <div class="modal-card glass modal-narrow">
       <header class="modal-head">
@@ -702,6 +767,9 @@
   </div>
 
   <!-- ===================== MODALE HISTORIQUE ===================== -->
+  <!-- Tableau des parties terminées, rempli par le JavaScript à partir des
+       données sauvegardées dans le navigateur (résultat, statistiques, XP
+       gagnée). -->
   <div class="modal-layer hidden" id="modal-history" role="dialog" aria-modal="true" aria-labelledby="history-title">
     <div class="modal-card glass modal-wide">
       <header class="modal-head">
@@ -722,6 +790,8 @@
   </div>
 
   <!-- ===================== MODALE SAUVEGARDES ===================== -->
+  <!-- Trois emplacements manuels et des parties nommées, distincts de la
+       sauvegarde automatique. Le champ de texte reçoit le nom choisi. -->
   <div class="modal-layer hidden" id="modal-saves" role="dialog" aria-modal="true" aria-labelledby="saves-title">
     <div class="modal-card glass modal-wide">
       <header class="modal-head">
@@ -744,6 +814,8 @@
   </div>
 
   <!-- ===================== MODALE PROFILS ===================== -->
+  <!-- Chaque profil garde ses réglages, ses statistiques et ses sauvegardes.
+       Le profil actif est rechargé automatiquement au prochain lancement. -->
   <div class="modal-layer hidden" id="modal-profiles" role="dialog" aria-modal="true" aria-labelledby="profiles-title">
     <div class="modal-card glass modal-wide">
       <header class="modal-head">
@@ -765,6 +837,9 @@
   </div>
 
   <!-- ===================== MODALE SUCCÈS ===================== -->
+  <!-- Grille des trophées. Le JavaScript ajoute une classe unlocked ou locked
+       sur chaque carte selon les succès débloqués, ce qui change leur
+       couleur. -->
   <div class="modal-layer hidden" id="modal-achievements" role="dialog" aria-modal="true" aria-labelledby="achievements-title">
     <div class="modal-card glass modal-wide">
       <header class="modal-head">
@@ -782,6 +857,9 @@
   </div>
 
   <!-- ===================== MODALE PUZZLES ===================== -->
+  <!-- Mini-plateau tactique : le joueur doit trouver le meilleur coup. Comme
+       dans le jeu principal, les pièces ne sont pas écrites ici : le
+       JavaScript les dessine dans la couche prévue à cet effet. -->
   <div class="modal-layer hidden" id="modal-puzzles" role="dialog" aria-modal="true" aria-labelledby="puzzles-title">
     <div class="modal-card glass modal-wide">
       <header class="modal-head">
@@ -820,6 +898,9 @@
   </div>
 
   <!-- ===================== MODALE REPLAY ===================== -->
+  <!-- Revoir une partie coup par coup : le plateau est reconstruit à chaque
+       position. Boutons de contrôle et curseur de type range permettent
+       d'avancer, de reculer ou de lancer la lecture automatique. -->
   <div class="modal-layer hidden" id="modal-replay" role="dialog" aria-modal="true" aria-labelledby="replay-title">
     <div class="modal-card glass modal-wide">
       <header class="modal-head">
@@ -855,9 +936,25 @@
   </div>
 
   <!-- Notifications -->
+  <!-- Messages temporaires (toasts) en haut de l'écran. L'attribut aria-live
+       demande au lecteur d'écran d'annoncer les nouveaux messages sans couper
+       ce que le joueur est en train de faire. -->
   <div class="toast-container" id="toasts" aria-live="polite"></div>
 
   <!-- ===================== SCRIPTS ===================== -->
+  <!-- Ordre de chargement : le navigateur lit les fichiers de haut en bas, et
+       un fichier ne peut utiliser que ce qui a déjà été lu avant lui.
+       - La bibliothèque d'interface arrive en premier ; elle fournit des outils
+         aux fichiers suivants.
+       - La configuration et les règles du jeu définissent les constantes et
+         les fonctions de base.
+       - Viennent ensuite le moteur de partie, les sauvegardes, les profils, les
+         réglages, les statistiques, le son, les animations, le décor, le
+         plateau et les puzzles.
+       - L'IA est chargée après les règles qu'elle consulte pour choisir un coup.
+       - script.js est dernier : il initialise l'interface et branche les
+         événements (clics, clavier) une fois tous les modules disponibles.
+       Tous ces fichiers sont locaux, ce qui permet de jouer hors ligne. -->
   <script src="vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
   <script src="config/game-config.js"></script>
   <script src="js/game-rules.js"></script>

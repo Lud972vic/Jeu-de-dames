@@ -14,16 +14,51 @@
  * Les fichiers sont générés localement : aucune licence externe, aucun réseau.
  */
 
+/**
+ * POUR UN DÉBUTANT — Rôle, concepts et mode d'emploi
+ * --------------------------------------------------
+ * Rôle : ce programme fabrique lui-même les ressources du jeu (sons, icônes,
+ * logo, feuille de style des polices) et les enregistre dans le dossier assets.
+ * Il n'utilise aucun fichier prêt à l'emploi et aucun service en ligne : tout
+ * est calculé par le code. On peut le relancer sans risque, il écrase les
+ * fichiers générés avec les mêmes contenus.
+ *
+ * Concepts utilisés :
+ *  - Buffer : en Node.js, un Buffer est un bloc de mémoire contenant des octets
+ *    (le langage n'a pas de type natif pour cela). C'est avec ça qu'on écrit de
+ *    vrais fichiers audio ou image.
+ *  - Son WAV : un fichier son est une suite de nombres (« échantillons ») qui
+ *    décrivent la pression de l'air au fil du temps, ici 44 100 fois par
+ *    seconde (SAMPLE_RATE). Une « enveloppe » règle le volume au début
+ *    (attaque) et à la fin (décroissance) pour éviter les clics.
+ *  - PNG et zlib : un PNG est une image composée de pixels rouge/vert/bleu/
+ *    transparence (RGBA). On écrit les octets de l'image dans un format précis,
+ *    puis on compresse les données avec zlib (module intégré à Node.js).
+ *    Une table CRC32 sert à détecter les erreurs dans chaque morceau (chunk).
+ *  - Chemin de fichier : path.join/path.resolve construisent les chemins en
+ *    utilisant le bon séparateur selon le système (Windows ou Linux).
+ *  - Math : sin/cos pour les ondes, exp pour les décroissances, min/max pour
+ *    borner les valeurs. Rien de plus qu'un peu d'algèbre et de géométrie.
+ *
+ * Mode d'emploi simple :
+ *  1. Ouvrez un terminal à la racine du projet.
+ *  2. Tapez : node scripts/generate-assets.js
+ *  3. Regardez la liste des fichiers « OK » affichés ; ils sont prêts à l'emploi.
+ */
 'use strict';
 
 const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
 
+// Racine du projet (parent de scripts/) puis les deux dossiers de destination
+// des fichiers créés. path.join assemble les morceaux de chemin proprement.
 const ROOT = path.resolve(__dirname, '..');
 const SOUNDS_DIR = path.join(ROOT, 'assets', 'sounds');
 const IMAGES_DIR = path.join(ROOT, 'assets', 'images');
 
+// S'assurer que les dossiers existent avant d'y écrire (recursive = crée aussi
+// les dossiers parents). C'est inoffensif s'ils existent déjà.
 fs.mkdirSync(SOUNDS_DIR, { recursive: true });
 fs.mkdirSync(IMAGES_DIR, { recursive: true });
 
@@ -31,9 +66,23 @@ fs.mkdirSync(IMAGES_DIR, { recursive: true });
  * 1. GÉNÉRATION AUDIO (WAV 16 bits, mono, 44 100 Hz)
  * ============================================================ */
 
+// Nombre d'échantillons sonores par seconde (44 100 = qualité CD). Plus cette
+// valeur est grande, plus le son est fidèle, mais plus le fichier est gros.
 const SAMPLE_RATE = 44100;
 
 /** Écrit un fichier WAV PCM 16 bits mono à partir d'un tableau de samples [-1, 1]. */
+/**
+ * Écrit un fichier audio WAV à partir d'une liste de nombres.
+ * @param {string} filePath - chemin complet du fichier .wav à créer.
+ * @param {Array<number>} samples - liste d'échantillons, chacun entre -1 et 1
+ *   (1 = volume maximum, -1 = opposé, 0 = silence).
+ * @returns {void} rien ; le fichier est écrit sur le disque et un message est
+ *   affiché dans le terminal.
+ * Notion simple : un WAV commence par 44 octets d'« en-tête » qui décrivent le
+ * format (fréquence, mono, 16 bits…), puis viennent les échantillons. Chacun
+ * est converti en entier signé sur 2 octets (writeInt16LE). Math.max/min
+ * « bornent » la valeur pour éviter de dépasser le maximum autorisé.
+ */
 function writeWav(filePath, samples) {
   const numSamples = samples.length;
   const dataSize = numSamples * 2;
@@ -62,20 +111,52 @@ function writeWav(filePath, samples) {
 }
 
 /** Enveloppe simple : attaque linéaire + décroissance exponentielle. */
+/**
+ * Calcule le volume à un instant donné pour adoucir le début et la fin d'un son.
+ * @param {number} t - temps écoulé depuis le début du son (en secondes).
+ * @param {number} duration - durée totale du son (en secondes).
+ * @param {number} [attack=0.01] - durée de l'attaque : le volume monte de 0 à 1.
+ * @param {number} [decay=6] - vitesse de la décroissance (plus c'est grand,
+ *   plus le son s'éteint vite).
+ * @returns {number} multiplicateur de volume, entre 0 et 1 environ.
+ * Notion simple : c'est la « forme » du son. Une attaque évite le clic du
+ * départ, une décroissance exponentielle (Math.exp) imite un son qui s'éteint.
+ */
 function envelope(t, duration, attack = 0.01, decay = 6) {
   if (t < attack) return t / attack;
   return Math.exp(-decay * (t - attack) / duration);
 }
 
+/**
+ * Fabrique une onde sinusoïdale (le son « pur » de base).
+ * @param {number} t - temps en secondes.
+ * @param {number} freq - fréquence en hertz (nombre d'oscillations par seconde ;
+ *   plus elle est haute, plus le son est aigu).
+ * @returns {number} valeur de l'onde entre -1 et 1.
+ * Notion simple : Math.sin décrit un mouvement de va-et-vient régulier, comme
+ * un ressort. C'est la brique de base de presque tous les sons ici.
+ */
 function sine(t, freq) {
   return Math.sin(2 * Math.PI * freq * t);
 }
 
+/**
+ * Fabrique un échantillon de bruit aléatoire.
+ * @returns {number} nombre aléatoire entre -1 et 1.
+ * Notion simple : c'est comme un « grésillement ». Mélangé à un son pur, il
+ * donne des effets percussifs (clic, capture).
+ */
 function noise() {
   return Math.random() * 2 - 1;
 }
 
 /** Petit "tick" de déplacement. */
+/**
+ * Crée le son du déplacement d'un pion : un petit « tic » très bref.
+ * @returns {Array<number>} liste d'échantillons prête à être écrite en WAV.
+ * Notion simple : on calcule une valeur par instant (0,08 s ici) en mélangeant
+ * deux sinusoïdes (720 et 1440 Hz) et une enveloppe très courte.
+ */
 function makeMoveSound() {
   const duration = 0.08;
   const n = Math.floor(SAMPLE_RATE * duration);
@@ -89,6 +170,13 @@ function makeMoveSound() {
 }
 
 /** Capture : balayage descendant + bruit bref. */
+/**
+ * Crée le son d'une capture : une note qui descend vite, du bruit et un « boum ».
+ * @returns {Array<number>} liste d'échantillons prête à être écrite en WAV.
+ * Notion simple : la fréquence diminue progressivement (balayage exponentiel),
+ * ce qui donne l'impression d'un objet qui tombe. « phase » accumule l'angle
+ * pour que la courbe reste continue quand la fréquence change.
+ */
 function makeCaptureSound() {
   const duration = 0.22;
   const n = Math.floor(SAMPLE_RATE * duration);
@@ -107,6 +195,13 @@ function makeCaptureSound() {
 }
 
 /** Promotion : arpège ascendant (do - mi - sol - do). */
+/**
+ * Crée le son d'une promotion (pion devenu dame) : un arpège de 4 notes.
+ * @returns {Array<number>} liste d'échantillons prête à être écrite en WAV.
+ * Notion simple : on ajoute les notes les unes après les autres dans le même
+ * tableau, à des positions décalées. « += » signifie « on ajoute à ce qui est
+ * déjà là », ce qui permet de superposer les sons.
+ */
 function makePromoteSound() {
   const notes = [523.25, 659.25, 783.99, 1046.5];
   const noteDur = 0.09;
@@ -126,6 +221,13 @@ function makePromoteSound() {
 }
 
 /** Victoire : accord majeur + scintillement. */
+/**
+ * Crée une petite musique de victoire : plusieurs notes jouées en même temps
+ * (un accord) plus un effet qui brille.
+ * @returns {Array<number>} liste d'échantillons prête à être écrite en WAV.
+ * Notion simple : superposer des notes revient à additionner leurs valeurs ;
+ * le « scintillement » est une note dont la fréquence ondule et qui s'éteint.
+ */
 function makeVictorySound() {
   const duration = 1.1;
   const n = Math.floor(SAMPLE_RATE * duration);
@@ -145,6 +247,12 @@ function makeVictorySound() {
 }
 
 /** Clic d'interface. */
+/**
+ * Crée le son d'un clic sur un bouton : deux notes très brèves et aiguës.
+ * @returns {Array<number>} liste d'échantillons prête à être écrite en WAV.
+ * Notion simple : la durée est minuscule (0,045 s) et l'attaque encore plus,
+ * ce qui donne un son sec, comme un interrupteur.
+ */
 function makeClickSound() {
   const duration = 0.045;
   const n = Math.floor(SAMPLE_RATE * duration);
@@ -158,6 +266,12 @@ function makeClickSound() {
 }
 
 /** Coup invalide : bourdonnement grave. */
+/**
+ * Crée le son d'une action refusée : un bourdonnement grave.
+ * @returns {Array<number>} liste d'échantillons prête à être écrite en WAV.
+ * Notion simple : deux fréquences basses (120 et 180 Hz) se superposent ; leur
+ * mélange donne un son « rauque » qui signale une erreur.
+ */
 function makeInvalidSound() {
   const duration = 0.18;
   const n = Math.floor(SAMPLE_RATE * duration);
@@ -171,6 +285,12 @@ function makeInvalidSound() {
 }
 
 /** Match nul : deux tons neutres descendants. */
+/**
+ * Crée le son d'un match nul : deux notes descendantes, ni gaie ni triste.
+ * @returns {Array<number>} liste d'échantillons prête à être écrite en WAV.
+ * Notion simple : on coupe le tableau en deux moitiés (seg) ; chaque moitié a
+ * sa propre fréquence et sa propre enveloppe.
+ */
 function makeDrawSound() {
   const duration = 0.5;
   const n = Math.floor(SAMPLE_RATE * duration);
@@ -185,6 +305,8 @@ function makeDrawSound() {
   return out;
 }
 
+// On appelle chaque fonction de création de son et on écrit aussitôt le
+// résultat dans le dossier assets/sounds. L'ordre des lignes n'a pas d'importance.
 console.log('Génération des sons :');
 writeWav(path.join(SOUNDS_DIR, 'move.wav'), makeMoveSound());
 writeWav(path.join(SOUNDS_DIR, 'capture.wav'), makeCaptureSound());
@@ -199,6 +321,10 @@ writeWav(path.join(SOUNDS_DIR, 'draw.wav'), makeDrawSound());
  * ============================================================ */
 
 /** Table CRC32 (norme PNG). */
+// Construction (une seule fois au démarrage) d'une table de 256 nombres utilisée
+// pour calculer un CRC : une « empreinte » de 4 octets qui permet de vérifier
+// qu'un morceau de fichier PNG n'a pas été abîmé. Ce sont des constantes fixes
+// de la norme ; on peut la voir comme un dictionnaire de raccourcis de calcul.
 const CRC_TABLE = (() => {
   const table = new Uint32Array(256);
   for (let n = 0; n < 256; n++) {
@@ -211,6 +337,15 @@ const CRC_TABLE = (() => {
   return table;
 })();
 
+/** Calcule l'empreinte CRC32 d'un bloc d'octets (contrôle d'intégrité PNG). */
+/**
+ * Calcule la valeur CRC32 d'un bloc de données.
+ * @param {Buffer} buf - les octets à vérifier.
+ * @returns {number} l'empreinte (entier positif sur 32 bits).
+ * Notion simple : on mélange chaque octet avec la valeur courante en utilisant
+ * la table précalculée plus haut. Deux blocs identiques donnent toujours la
+ * même empreinte ; un seul octet changé la modifie complètement.
+ */
 function crc32(buf) {
   let c = 0xffffffff;
   for (let i = 0; i < buf.length; i++) {
@@ -219,6 +354,17 @@ function crc32(buf) {
   return (c ^ 0xffffffff) >>> 0;
 }
 
+/** Construit un « chunk » PNG : longueur + type + données + empreinte CRC. */
+/**
+ * Fabrique un morceau (chunk) d'un fichier PNG.
+ * @param {string} type - nom du morceau sur 4 lettres (IHDR, IDAT, IEND…).
+ * @param {Buffer} data - les données du morceau.
+ * @returns {Buffer} le morceau complet, prêt à être collé aux autres.
+ * Notion simple : chaque morceau PNG commence par sa taille (écrite en gros
+ * boutiste / big-endian), puis son type, puis ses données, puis le CRC calculé
+ * sur le type + les données. Buffer.concat assemble les morceaux comme des
+ * briques de Lego.
+ */
 function pngChunk(type, data) {
   const typeBuf = Buffer.from(type, 'ascii');
   const lenBuf = Buffer.alloc(4);
@@ -229,6 +375,18 @@ function pngChunk(type, data) {
 }
 
 /** Encode un buffer RGBA (width*height*4) en PNG. */
+/**
+ * Transforme une image en mémoire en un vrai fichier PNG.
+ * @param {number} width - largeur de l'image en pixels.
+ * @param {number} height - hauteur de l'image en pixels.
+ * @param {Buffer} rgba - les pixels : 4 octets par pixel (rouge, vert, bleu,
+ *   transparence), soit width * height * 4 octets.
+ * @returns {Buffer} les octets du fichier PNG complet.
+ * Notion simple : un PNG = signature (8 octets) + morceau IHDR (infos générales)
+ * + morceau IDAT (pixels compressés) + morceau IEND (fin). Chaque ligne de
+ * pixels est précédée d'un octet de filtre (0 = aucun). deflateSync compresse
+ * les données pour réduire la taille du fichier.
+ */
 function encodePNG(width, height, rgba) {
   const sig = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
   const ihdr = Buffer.alloc(13);
@@ -258,6 +416,14 @@ function encodePNG(width, height, rgba) {
 }
 
 /** Canvas RGBA minimal avec blending alpha. */
+/**
+ * Crée une « toile » carrée vide en mémoire pour dessiner l'icône.
+ * @param {number} size - largeur et hauteur en pixels (par exemple 192).
+ * @returns {object} un objet { size, data } où data est un Buffer rempli de
+ *   zéros, c'est-à-dire une image entièrement transparente.
+ * Notion simple : il n'y a pas de bibliothèque graphique ici ; la « toile »
+ * n'est qu'un grand tableau d'octets qu'on modifiera pixel par pixel.
+ */
 function makeCanvas(size) {
   return {
     size,
@@ -265,6 +431,20 @@ function makeCanvas(size) {
   };
 }
 
+/**
+ * Dessine un pixel sur la toile en tenant compte de sa transparence.
+ * @param {object} canvas - la toile créée par makeCanvas().
+ * @param {number} x - coordonnée horizontale (0 = à gauche).
+ * @param {number} y - coordonnée verticale (0 = en haut).
+ * @param {number} r - rouge (0 à 255).
+ * @param {number} g - vert (0 à 255).
+ * @param {number} b - bleu (0 à 255).
+ * @param {number} a - opacité (0 = invisible, 1 = complètement opaque).
+ * @returns {void} rien ; la couleur de la toile est modifiée sur place.
+ * Notion simple : c'est le « blending alpha ». Si le pixel était déjà coloré,
+ * on mélange l'ancienne et la nouvelle couleur au prorata des opacités. La
+ * première ligne refuse d'écrire hors de l'image (sécurité).
+ */
 function blendPixel(canvas, x, y, r, g, b, a) {
   if (x < 0 || y < 0 || x >= canvas.size || y >= canvas.size || a <= 0) return;
   const idx = (y * canvas.size + x) * 4;
@@ -279,15 +459,44 @@ function blendPixel(canvas, x, y, r, g, b, a) {
   d[idx + 3] = Math.round(outA * 255);
 }
 
+/**
+ * Interpole linéairement entre deux nombres (lerp = linear interpolation).
+ * @param {number} a - valeur de départ (quand t vaut 0).
+ * @param {number} b - valeur d'arrivée (quand t vaut 1).
+ * @param {number} t - position entre les deux (0 à 1).
+ * @returns {number} la valeur intermédiaire ; t = 0,5 donne le milieu.
+ * Notion simple : sert à fabriquer des dégradés de couleur en douceur.
+ */
 function lerp(a, b, t) {
   return a + (b - a) * t;
 }
 
+/**
+ * Borne une valeur entre 0 et 1.
+ * @param {number} v - valeur à limiter.
+ * @returns {number} v si elle est déjà entre 0 et 1, sinon 0 ou 1.
+ * Notion simple : évite les couleurs négatives ou supérieures à 255 après les
+ * calculs de dégradé. clamp = « serrer dans un étau ».
+ */
 function clamp01(v) {
   return Math.max(0, Math.min(1, v));
 }
 
 /** Distance signée à un rectangle arrondi (pour coins arrondis). */
+/**
+ * Calcule une « distance signée » à un rectangle aux coins arrondis.
+ * @param {number} px - abscisse du point à tester.
+ * @param {number} py - ordonnée du point à tester.
+ * @param {number} cx - abscisse du centre du rectangle.
+ * @param {number} cy - ordonnée du centre du rectangle.
+ * @param {number} halfW - demi-largeur du rectangle.
+ * @param {number} halfH - demi-hauteur du rectangle.
+ * @param {number} radius - rayon des coins arrondis.
+ * @returns {number} négatif si le point est dedans, 0 sur le bord, positif
+ *   dehors ; la valeur indique la distance au bord.
+ * Notion simple : c'est une « fonction de distance signée » (SDF). On s'en sert
+ * ici pour dessiner un fond avec des coins arrondis et une bordure lumineuse.
+ */
 function roundedRectSDF(px, py, cx, cy, halfW, halfH, radius) {
   const qx = Math.abs(px - cx) - (halfW - radius);
   const qy = Math.abs(py - cy) - (halfH - radius);
@@ -297,6 +506,16 @@ function roundedRectSDF(px, py, cx, cy, halfW, halfH, radius) {
 }
 
 /** Remplit un polygone (crown, triangles) par test point-dans-polygone. */
+/**
+ * Détermine si un point est à l'intérieur d'un polygone (la couronne ici).
+ * @param {number} px - abscisse du point à tester.
+ * @param {number} py - ordonnée du point à tester.
+ * @param {Array<Array<number>>} poly - liste de sommets [x, y] du polygone.
+ * @returns {boolean} true si le point est dedans, false sinon.
+ * Notion simple : on trace une ligne imaginaire vers la droite et on compte
+ * combien de fois elle coupe les bords du polygone. Un nombre impair de
+ * croisements signifie « dedans » (algorithme classique du « ray casting »).
+ */
 function pointInPolygon(px, py, poly) {
   let inside = false;
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
@@ -312,6 +531,17 @@ function pointInPolygon(px, py, poly) {
 /**
  * Dessine l'icône premium : fond sombre dégradé, damier subtil,
  * pièce lumineuse avec couronne (identité CHECKERS LEGEND 2026).
+ */
+/**
+ * Dessine l'icône complète pixel par pixel dans une toile en mémoire.
+ * @param {number} size - taille de l'image carrée (192 ou 512 pixels).
+ * @returns {object} la toile remplie (voir makeCanvas), prête à être encodée
+ *   en PNG par encodePNG().
+ * Notion simple : l'icône se construit en trois calques, comme un dessin
+ * animé : d'abord le fond (dégradé + damier + coins arrondis), ensuite la pièce
+ * circulaire, enfin la couronne dorée et ses perles. Chaque calque est ajouté
+ * avec blendPixel(), qui respecte la transparence. Le paramètre S = size sert
+ * à garder le dessin proportionnel quelle que soit la taille demandée.
  */
 function drawIcon(size) {
   const canvas = makeCanvas(size);
@@ -437,6 +667,9 @@ function drawIcon(size) {
   return canvas;
 }
 
+// Une icône PWA doit exister en deux tailles (petite pour le navigateur,
+// grande pour l'écran d'accueil du téléphone). On dessine, on compresse en PNG
+// puis on écrit le fichier ; template literal `icon-${size}.png` = interpolation.
 console.log('Génération des icônes PWA :');
 for (const size of [192, 512]) {
   const canvas = drawIcon(size);
@@ -450,6 +683,10 @@ for (const size of [192, 512]) {
  * 3. LOGO SVG (vectoriel, police Orbitron locale en fallback système)
  * ============================================================ */
 
+// Logo vectoriel : contrairement au PNG, un SVG décrit des formes (cercles,
+// chemins, texte) avec des instructions XML. Il reste net à n'importe quelle
+// taille. La chaîne entre backticks (` … `) est un « template literal » : elle
+// peut contenir des retours à la ligne sans être coupée.
 const logoSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="200" viewBox="0 0 640 200" role="img" aria-label="Checkers Legend 2026">
   <defs>
     <linearGradient id="lgViolet" x1="0" y1="0" x2="1" y2="1">
@@ -492,6 +729,8 @@ const logoSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="200
 </svg>
 `;
 
+// Écriture du logo ; byteLength compte les octets réels (utile pour les
+// caractères accentués qui occupent plusieurs octets).
 fs.writeFileSync(path.join(IMAGES_DIR, 'logo.svg'), logoSvg);
 console.log(`  OK  assets/images/logo.svg (${Buffer.byteLength(logoSvg)} octets)`);
 
@@ -499,10 +738,16 @@ console.log(`  OK  assets/images/logo.svg (${Buffer.byteLength(logoSvg)} octets)
  * 4. FEUILLE DE STYLE DES POLICES LOCALES (@font-face)
  * ============================================================ */
 
+// Configuration des polices : la liste des « graisses » (400 = normale,
+// 700 = gras, 900 = très gras) pour chaque famille. fontFaces recueillera les
+// blocs de style @font-face générés, un par graisse.
 const fontFaces = [];
 const orbitronWeights = [400, 500, 600, 700, 800, 900];
 const rajdhaniWeights = [400, 500, 600, 700];
 
+// Pour chaque graisse, on fabrique une règle CSS @font-face qui associe un
+// nom de famille, une graisse et le fichier .woff2 correspondant (déjà
+// téléchargé par le script PowerShell). ${w} est remplacé par la valeur de w.
 for (const w of orbitronWeights) {
   fontFaces.push(`@font-face {
   font-family: 'Orbitron';
@@ -522,6 +767,8 @@ for (const w of rajdhaniWeights) {
 }`);
 }
 
+// Assemblage final : join('\n\n') place une ligne vide entre chaque règle pour
+// que le fichier reste lisible. Puis on écrit assets/fonts/fonts.css.
 const fontsCss = `/* CHECKERS LEGEND 2026 — Polices locales (aucun chargement distant)
  * Orbitron & Rajdhani — licence SIL Open Font License 1.1
  * Fichiers récupérés par scripts/fetch-dependencies.ps1 (via @fontsource)

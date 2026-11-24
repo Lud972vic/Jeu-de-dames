@@ -234,6 +234,8 @@ Aucun module n'a de dépendance distante à l'exécution. Le logo, les icônes e
 
 Documentation technique : [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · [`docs/DEPENDENCY_REPORT.md`](docs/DEPENDENCY_REPORT.md) · [`PROJECT_STATUS.md`](PROJECT_STATUS.md) · [`docs/ANDROID.md`](docs/ANDROID.md)
 
+**Vous débutez ou devez maintenir le projet ?** [`docs/GUIDE_DEBUTANT.md`](docs/GUIDE_DEBUTANT.md) explique les concepts JavaScript et l'organisation du code avec des mots simples. Chaque fonction du projet est commentée pour un lecteur qui ne connaît pas le langage.
+
 ---
 
 ## Confidentialité

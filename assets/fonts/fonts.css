@@ -1,6 +1,17 @@
 /* CHECKERS LEGEND 2026 — Polices locales (aucun chargement distant)
  * Orbitron & Rajdhani — licence SIL Open Font License 1.1
  * Fichiers récupérés par scripts/fetch-dependencies.ps1 (via @fontsource)
+ *
+ * @font-face déclare une police au navigateur : on donne un nom (font-family),
+ * une épaisseur (font-weight), un style, puis le fichier à charger (src).
+ * Chaque épaisseur possède ici son propre fichier .woff2 : le navigateur ne
+ * lit que celui dont il a besoin. font-display: swap affiche d'abord une
+ * police de secours, puis remplace le texte quand la police est prête.
+ *
+ * Pourquoi des fichiers locaux ? Le jeu est une application hors ligne : une
+ * police hébergée ailleurs ne pourrait pas être chargée sans connexion, et
+ * ralentirait l'affichage. Les garder dans ce dossier garantit aussi un rendu
+ * identique sur tous les appareils.
  */
 @font-face {
   font-family: 'Orbitron';
@@ -49,6 +60,7 @@
   font-display: swap;
   src: url('orbitron-latin-900-normal.woff2') format('woff2');
 }
+/* Même principe pour Rajdhani : c'est la police utilisée pour le texte courant. */
 
 @font-face {
   font-family: 'Rajdhani';

@@ -3,22 +3,48 @@
  * -----------------------------------------------------
  * Particules de capture, confettis de victoire, utilitaires de temporisation.
  * Canvas 2D natif, aucune bibliothèque externe.
+ *
+ * POUR UN DÉBUTANT — Le fichier est une IIFE (fonction appelée tout de suite)
+ * qui expose un seul objet, `Animations`. `this` désigne cet objet : toutes
+ * ses propriétés (tableaux de particules, canvas, etc.) sont partagées par ses
+ * méthodes. Les effets sont dessinés sur un canvas avec l'API « Canvas 2D » :
+ * `ctx.beginPath()`, `ctx.arc()`, `ctx.fill()` tracent des formes, tandis que
+ * `ctx.clearRect()` efface l'image précédente à chaque image. Les objets à
+ * afficher vivent dans des tableaux (`particles`, `confetti`, `shockwaves`,
+ * `splats`, `cracks`) ; on les fait évoluer avec `_update()` puis on les
+ * supprime avec `splice()` lorsqu'ils ont disparu. La boucle est pilotée par
+ * `requestAnimationFrame()` : le navigateur rappelle notre fonction `frame`
+ * environ 60 fois par seconde. `devicePixelRatio` (dpr) adapte la résolution
+ * du canvas aux écrans haute densité afin d'éviter un rendu flou. Les
+ * positions sont aléatoires (`Math.random`), le temps est mesuré avec
+ * `performance.now()`, et une image est ralentie/accélérée grâce au facteur
+ * `dt` (1 ≈ 16,67 ms, soit une image à 60 images/seconde).
  */
 (function (global) {
   'use strict';
 
+  /**
+   * Objet singleton (une seule instance) qui gère tous les effets du jeu.
+   * Les tableaux ci-dessous contiennent les objets actuellement animés.
+   */
   const Animations = {
-    canvas: null,
-    ctx: null,
-    particles: [],
-    confetti: [],
-    shockwaves: [],
-    splats: [],
-    cracks: [],
-    flash: 0,
-    running: false,
-    dpr: 1,
+    canvas: null,      // élément <canvas> sur lequel on dessine
+    ctx: null,         // contexte de dessin 2D obtenu avec getContext('2d')
+    particles: [],     // éclats de capture et étincelles
+    confetti: [],      // confettis de victoire
+    shockwaves: [],    // anneaux de choc
+    splats: [],        // éclaboussures collées au plateau
+    cracks: [],        // fissures du plateau
+    flash: 0,          // intensité du flash rouge (0 = aucun, max 0,5)
+    running: false,    // true tant que la boucle d'animation tourne
+    dpr: 1,            // ratio de pixels de l'écran (devicePixelRatio)
 
+    /**
+     * Prépare le canvas et surveille les changements de taille de la fenêtre.
+     * @param {HTMLCanvasElement} canvas élément <canvas> à utiliser
+     * @returns {void}
+     * Concept : `getContext('2d')` fournit la « boîte à outils » de dessin.
+     */
     init(canvas) {
       this.canvas = canvas;
       this.ctx = canvas.getContext('2d');
@@ -26,10 +52,21 @@
       global.addEventListener('resize', () => this._resize());
     },
 
+    /**
+     * Méthode publique pour recalculer la taille du canvas (ex. changement de
+     * layout).
+     * @returns {void}
+     */
     resize() {
       this._resize();
     },
 
+    /**
+     * Ajuste la taille interne du canvas à celle de son parent et au dpr.
+     * @returns {void}
+     * Concept : on distingue la taille CSS (ce que voit l'utilisateur) de la
+     * taille en pixels du canvas (ce que dessine le navigateur).
+     */
     _resize() {
       if (!this.canvas) return;
       this.dpr = global.devicePixelRatio || 1;
@@ -42,7 +79,17 @@
       this.canvas.style.height = rect.height + 'px';
     },
 
-    /** Coordonnées en pixels CSS relatives au canvas. */
+    /**
+     * Lance une gerbe de particules à partir d'un point.
+     * @param {number} x coordonnée horizontale (pixels CSS)
+     * @param {number} y coordonnée verticale (pixels CSS)
+     * @param {string} color couleur des particules (valeur CSS)
+     * @param {number} [count] nombre de particules (16 par défaut)
+     * @returns {void}
+     * Concept : `Math.cos`/`Math.sin` répartissent les particules sur un
+     * cercle complet (angle aléatoire entre 0 et 2π). `vx`/`vy` sont les
+     * vitesses horizontale et verticale ; `life` diminue jusqu'à 0.
+     */
     burst(x, y, color, count) {
       if (this.reducedMotion()) return;
       count = count || 16;
@@ -62,7 +109,12 @@
       this._start();
     },
 
-    /** Pluie de confettis (victoire). */
+    /**
+     * Pluie de confettis (victoire) : 140 morceaux qui tombent depuis le haut.
+     * @returns {void}
+     * Concept : chaque confetti a une position, une vitesse, une taille et
+     * une rotation ; la palette est un tableau de couleurs choisies au hasard.
+     */
     celebrate() {
       if (this.reducedMotion()) return;
       const w = this.canvas ? this.canvas.clientWidth : global.innerWidth;
@@ -89,6 +141,10 @@
      * @param {number} x position dans le canvas (pixels CSS)
      * @param {number} y position dans le canvas (pixels CSS)
      * @param {number} intensity 1 pour une prise simple, croissant en rafle
+     * @returns {void}
+     * Concept : l'intensité est bornée entre 1 et 6 (`Math.max`/`Math.min`)
+     * pour éviter des effets démesurés ; plus elle est grande, plus il y a
+     * d'éclats (jusqu'à 130) et de fissures.
      */
     brutalCapture(x, y, intensity) {
       if (this.reducedMotion()) return;
@@ -165,16 +221,35 @@
       this._start();
     },
 
+    /**
+     * Indique si l'utilisateur préfère réduire les animations.
+     * @returns {boolean} true si les effets doivent être désactivés
+     * Concept : `classList.contains` vérifie une classe CSS sur le body, et
+     * `matchMedia` interroge le réglage système « prefers-reduced-motion ».
+     */
     reducedMotion() {
       const body = global.document && global.document.body;
       if (body && body.classList.contains('no-animations')) return true;
       return !!(global.matchMedia && global.matchMedia('(prefers-reduced-motion: reduce)').matches);
     },
 
+    /**
+     * Démarre la boucle d'animation si elle n'est pas déjà lancée.
+     * @returns {void}
+     * Concept : `requestAnimationFrame` demande au navigateur d'appeler notre
+     * fonction avant la prochaine image. On calcule `dt` (temps écoulé divisé
+     * par 16,67 ms) pour que la vitesse soit la même sur tous les écrans.
+     * Tant qu'il reste des objets animés, on demande une nouvelle image ;
+     * sinon on efface le canvas et on s'arrête pour économiser le CPU.
+     */
     _start() {
       if (this.running) return;
       this.running = true;
       this._last = global.performance ? global.performance.now() : Date.now();
+      /**
+       * Une image de la boucle : met à jour, dessine, puis recommence.
+       * @returns {void}
+       */
       const frame = () => {
         const now = global.performance ? global.performance.now() : Date.now();
         const dt = Math.min(40, now - this._last) / 16.67;
@@ -192,6 +267,14 @@
       global.requestAnimationFrame(frame);
     },
 
+    /**
+     * Fait évoluer tous les objets animés d'une image.
+     * @param {number} dt facteur de temps (1 ≈ 16,67 ms à 60 images/s)
+     * @returns {void}
+     * Concept : on parcourt les tableaux à l'envers (de la fin vers le début)
+     * afin de pouvoir supprimer un élément avec `splice()` sans décaler les
+     * index des éléments qui restent à traiter.
+     */
     _update(dt) {
       for (let i = this.particles.length - 1; i >= 0; i--) {
         const p = this.particles[i];
@@ -233,6 +316,14 @@
       }
     },
 
+    /**
+     * Dessine tous les effets sur le canvas pour l'image courante.
+     * @returns {void}
+     * Concept : `setTransform(dpr, ...)` passe en coordonnées CSS, puis
+     * `clearRect()` efface tout. `save()`/`restore()` mémorise et restaure
+     * l'état du crayon (utile pour ne pas garder la rotation des confettis).
+     * `globalAlpha` fixe la transparence ; `arc()`/ellipse()` tracent des formes.
+     */
     _draw() {
       if (!this.ctx || !this.canvas) return;
       const ctx = this.ctx;
@@ -309,11 +400,19 @@
       }
     },
 
+    /**
+     * Attend un certain temps avant de continuer.
+     * @param {number} ms durée d'attente en millisecondes
+     * @returns {Promise<void>} promesse résolue après le délai
+     * Concept : une Promise représente un résultat futur. Ici `setTimeout`
+     * appelle `resolve` à la fin du délai, ce qui permet d'écrire `await`.
+     */
     sleep(ms) {
       return new Promise(resolve => global.setTimeout(resolve, ms));
     }
   };
 
+  // Exposition globale (navigateur) et compatibilité Node avec `require()`.
   global.Animations = Animations;
   if (typeof module !== 'undefined' && module.exports) module.exports = Animations;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

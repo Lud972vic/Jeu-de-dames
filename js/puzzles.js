@@ -8,11 +8,37 @@
  * Sans `to`, toutes les cases d'atterrissage capturant les bonnes pièces
  * sont acceptées (cas des dames volantes).
  */
+
+/**
+ * POUR BIEN DÉBUTER
+ * -----------------
+ * Un puzzle est un petit objet de données : un titre, un niveau, un indice,
+ * une position de départ (spec) et la liste des coups attendus (solution).
+ * PUZZLES est un tableau : une liste ordonnée de ces objets.
+ *
+ * Le plateau n'est pas stocké directement : la « spec » associe un code de pièce
+ * à une liste de cases, puis CheckersRules.boardFromPieces() construit le plateau.
+ * C'est une façon compacte de décrire une position.
+ *
+ * Le module utilise les méthodes des tableaux : find() (premier élément trouvé),
+ * findIndex() (sa position), slice() (copier avant de trier), sort() (trier),
+ * join() (assembler en texte) et Set (ensemble de valeurs uniques, sans doublon).
+ * Les nombres de cases vont de 0 à 99 (plateau 10 x 10).
+ * Tout est dans une IIFE : seul CheckersPuzzles est rendu public.
+ */
 (function (global) {
   'use strict';
 
+  // CFG donne les codes de pièces et les identifiants des camps.
   const CFG = global.GameConfig;
 
+  // Schéma d'un puzzle :
+  // id = identifiant unique ; title / level / hint = textes affichés ;
+  // spec = objet { codeDePièce: [numérosDeCases] } décrivant la position ;
+  // player = camp qui joue (CFG.WHITE ou CFG.BLACK) ;
+  // solution = liste de coups { from, captures, to? } à jouer dans l'ordre.
+  // `to` est facultatif : sans lui, toute case d'atterrissage qui capture les
+  // bonnes pièces est acceptée (utile pour les dames qui volent).
   const PUZZLES = [
     {
       id: 'prise-simple',
@@ -70,17 +96,39 @@
     }
   ];
 
+  /**
+   * Compare deux listes de cases sans tenir compte de l'ordre.
+   * On copie chaque liste avec slice() avant de la trier, pour ne pas modifier
+   * les originaux ; join(',') assemble ensuite les nombres en une seule chaîne.
+   * @param {number[]} a première liste de cases.
+   * @param {number[]} b deuxième liste de cases.
+   * @returns {boolean} true si les deux listes contiennent les mêmes cases.
+   */
   const sameSquares = (a, b) => a.slice().sort((x, y) => x - y).join(',') ===
     b.slice().sort((x, y) => x - y).join(',');
 
+  // Objet public : `list` donne accès à tous les puzzles ; les méthodes
+  // ci-dessous permettent de les chercher, de les vérifier et d'en choisir un.
   const Puzzles = {
     list: PUZZLES,
 
+    /**
+     * Cherche un puzzle par son identifiant.
+     * find() renvoie le premier élément qui correspond, ou undefined.
+     * @param {string} id identifiant recherché.
+     * @returns {object|null} le puzzle trouvé, ou null.
+     */
     getById(id) {
       return PUZZLES.find((p) => p.id === id) || null;
     },
 
-    /** Puzzle suivant dans la liste, avec retour au premier après le dernier. */
+    /**
+     * Puzzle suivant dans la liste, avec retour au premier après le dernier.
+     * Le reste de la division (%) fait le « tour » : après le dernier index,
+     * on repart à 0.
+     * @param {string} id identifiant du puzzle courant.
+     * @returns {object} le puzzle suivant (ou le premier en secours).
+     */
     next(id) {
       const index = PUZZLES.findIndex((p) => p.id === id);
       return PUZZLES[(index + 1) % PUZZLES.length] || PUZZLES[0];
@@ -88,14 +136,19 @@
 
     /**
      * Vérifie la cohérence de toutes les positions et solutions.
+     * Pour chaque puzzle : identifiant unique, textes présents, codes de pièces
+     * valides, cases dans le plateau (0 à 99). Ensuite on « joue » la solution
+     * avec le moteur de règles pour vérifier que chaque coup est bien légal.
      * @param {object} rules module de règles (CheckersRules), optionnel en navigateur
-     * @returns {{ok: boolean, errors: string[]}}
+     * @returns {{ok: boolean, errors: string[]}} réussite et liste des erreurs trouvées
      */
     validate(rules) {
       const engine = rules || global.CheckersRules;
       const errors = [];
       if (!engine) return { ok: false, errors: ['Module de règles indisponible.'] };
 
+      // Set = ensemble : il ne conserve qu'une fois chaque identifiant,
+      // ce qui permet de repérer les doublons.
       const ids = new Set();
       for (const puzzle of PUZZLES) {
         const label = puzzle.id || '(id manquant)';
@@ -125,6 +178,7 @@
           errors.push(label + ' : solution vide.');
           continue;
         }
+        // On rejoue la solution coup par coup sur un plateau temporaire (current).
         let current = board;
         for (const step of puzzle.solution) {
           const moves = engine.getLegalMoves(current, puzzle.player);
@@ -141,7 +195,12 @@
       return { ok: errors.length === 0, errors: errors };
     },
 
-    /** Puzzle déterministe du jour (même résultat pour tout le monde). */
+    /**
+     * Puzzle déterministe du jour (même résultat pour tout le monde).
+     * La date devient un nombre AAMMJJ ; le reste de ce nombre par le nombre de
+     * puzzles donne un index. Ainsi tout le monde voit le même puzzle ce jour-là.
+     * @returns {object} le puzzle du jour.
+     */
     daily() {
       const now = new Date();
       const key = now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
@@ -149,6 +208,8 @@
     }
   };
 
+  // Motif UMD : on publie l'objet dans le navigateur (global.CheckersPuzzles)
+  // et on l'exporte aussi pour Node (module.exports).
   global.CheckersPuzzles = Puzzles;
   if (typeof module !== 'undefined' && module.exports) module.exports = Puzzles;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

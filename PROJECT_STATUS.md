@@ -74,6 +74,7 @@ PWA hors ligne, tests et documentation.
 ### Documentation et ressources
 
 - `docs/ARCHITECTURE.md` — architecture technique.
+- `docs/GUIDE_DEBUTANT.md` — guide de lecture et de maintenance pour non-développeur.
 - `docs/DEPENDENCY_REPORT.md` — vérification des dépendances locales.
 - `docs/TEST_REPORT.md` — rapport de tests détaillé.
 - `docs/screenshots/` — 4 captures de validation.

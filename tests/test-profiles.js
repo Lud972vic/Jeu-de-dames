@@ -2,11 +2,35 @@
  * CHECKERS LEGEND 2026 — Tests des profils et des sauvegardes nommées
  * Exécution : node --test tests/test-profiles.js
  */
+/**
+ * NOTE PÉDAGOGIQUE (débutant)
+ *
+ * Ce fichier teste les profils : plusieurs joueurs peuvent avoir des réglages,
+ * des statistiques et des sauvegardes séparés. Comme il n’y a pas de navigateur
+ * dans Node, on simule localStorage et sessionStorage avec MemoryStorage, une
+ * classe qui stocke tout dans une Map en mémoire, ainsi qu’un faux document et
+ * un faux matchMedia. Les modules sont chargés avec require() après avoir
+ * exposé GameConfig, StorageManager, SettingsManager et Statistics comme
+ * variables globales, exactement comme le fait la page HTML.
+ *
+ * node:test fournit test() (describe() sert à regrouper) et assert vérifie les
+ * résultats. Les titres de tests sont cités dans la documentation : ils ne
+ * doivent pas changer.
+ *
+ * Lancer ce seul fichier : node --test tests/test-profiles.js
+ */
 'use strict';
 
+/**
+ * Import du lanceur de tests et des fonctions de vérification.
+ */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
+/**
+ * Faux stockage du navigateur : les clés et les valeurs sont gardées dans une
+ * Map, uniquement pendant la durée du test.
+ */
 class MemoryStorage {
   constructor() { this.map = new Map(); }
   getItem(key) { return this.map.has(key) ? this.map.get(key) : null; }
@@ -16,9 +40,16 @@ class MemoryStorage {
   get length() { return this.map.size; }
 }
 
+/**
+ * Installation des faux stockages dans les globales avant le chargement des modules.
+ */
 global.localStorage = new MemoryStorage();
 global.sessionStorage = new MemoryStorage();
 
+/**
+ * Fausse liste de classes CSS du document : les méthodes ne font rien et
+ * « contains » répond toujours faux.
+ */
 const classList = { toggle() {}, add() {}, remove() {}, contains() { return false; } };
 global.document = {
   documentElement: { style: { setProperty() {} } },
@@ -26,6 +57,10 @@ global.document = {
 };
 global.matchMedia = () => ({ matches: false, addEventListener() {}, removeEventListener() {} });
 
+/**
+ * On charge la configuration, puis on l’expose globalement avec les autres
+ * modules attendus par le gestionnaire de profils.
+ */
 const CFG = require('../config/game-config.js');
 global.GameConfig = CFG;
 global.StorageManager = require('../js/storage-manager.js');
@@ -33,9 +68,19 @@ global.SettingsManager = require('../js/settings-manager.js');
 global.Statistics = require('../js/statistics.js');
 const Profiles = require('../js/profile-manager.js');
 
+/**
+ * Raccourci vers les noms de clés utilisés dans le stockage.
+ */
 const KEYS = CFG.STORAGE.KEYS;
+/**
+ * Fabrique la clé de stockage d’un emplacement de sauvegarde nommé.
+ */
 const slotKey = (slot) => KEYS.SAVE + ':slot' + slot;
 
+/**
+ * Fabrique une sauvegarde de l’ancien format : un plateau vide de 100 cases
+ * et autant d’entrées d’historique que demandé. Sert à tester la migration.
+ */
 function legacyGame(moves) {
   return {
     engine: { board: new Array(100).fill(0), history: new Array(moves).fill({ notation: 'x' }) },
@@ -46,6 +91,12 @@ function legacyGame(moves) {
   };
 }
 
+/**
+ * Scénario : des données anciennes existent avant la création du premier profil.
+ * Pourquoi : l’arrivée des profils ne doit pas effacer les données d’un joueur déjà là.
+ * Assertions : un seul profil est créé, il récupère le nom, les statistiques,
+ * la sauvegarde et l’emplacement, et les anciennes clés restent présentes.
+ */
 test('Premier lancement : le profil par défaut récupère les données existantes', () => {
   global.localStorage.clear();
   global.StorageManager.set(KEYS.SETTINGS, { playerName: 'Léa', theme: 'midnight' });
@@ -65,6 +116,12 @@ test('Premier lancement : le profil par défaut récupère les données existant
   assert.ok(global.StorageManager.get(KEYS.SETTINGS, null));
 });
 
+/**
+ * Scénario : on modifie le profil actif, on crée un second profil, puis on revient.
+ * Pourquoi : chaque joueur doit retrouver ses propres données sans mélange.
+ * Assertions : le nouveau profil démarre vide et les données du premier sont
+ * restaurées lors du retour.
+ */
 test('Bascule entre profils : isolation des réglages, statistiques et sauvegardes', () => {
   global.localStorage.clear();
   Profiles.registry = null;
@@ -95,6 +152,11 @@ test('Bascule entre profils : isolation des réglages, statistiques et sauvegard
   assert.equal(restored.engine.history.length, 9);
 });
 
+/**
+ * Scénario : on crée une sauvegarde nommée, on change de profil, puis on revient.
+ * Pourquoi : ces sauvegardes appartiennent à un seul profil.
+ * Assertions : visibles pour leur profil, invisibles pour l’autre, puis supprimables.
+ */
 test('Sauvegardes nommées : création, lecture et suppression propres au profil', () => {
   global.localStorage.clear();
   Profiles.registry = null;
@@ -115,6 +177,13 @@ test('Sauvegardes nommées : création, lecture et suppression propres au profil
   assert.equal(Profiles.listNamed().length, 0);
 });
 
+/**
+ * Scénario : on renomme un profil, on le supprime, puis on essaie de supprimer le dernier.
+ * Pourquoi : le nom du joueur est recopié dans les réglages, et un profil doit
+ * toujours rester disponible.
+ * Assertions : renommage effectué, retour au premier profil après suppression,
+ * et refus de supprimer le dernier.
+ */
 test('Renommage, suppression et garde du dernier profil', () => {
   global.localStorage.clear();
   Profiles.registry = null;

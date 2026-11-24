@@ -9,6 +9,12 @@
 /* ------------------------------------------------------------
    1. Variables & thèmes
    ------------------------------------------------------------ */
+/* Une variable CSS porte deux tirets devant son nom (par exemple --bg-0) et
+   se lit avec var(--bg-0). Définir les couleurs ici permet de changer tout le
+   jeu depuis un seul endroit. La règle :root vise « toute la page » ; les
+   règles body[data-mode="..."] ou body[data-theme="..."] remplacent ensuite
+   certaines variables selon le mode et le thème choisis par le joueur.
+   ------------------------------------------------------------ */
 
 :root {
   /* Palette inspirée du logo de référence : bleu roi, cyan, rouge, blanc. */
@@ -162,6 +168,12 @@ body[data-pieces="emerald"] {
 /* ------------------------------------------------------------
    2. Base
    ------------------------------------------------------------ */
+/* La règle * vise tous les éléments : box-sizing: border-box compte la
+   bordure dans la largeur, ce qui évite les débordements. On donne ensuite la
+   police et la couleur de texte par défaut à toute la page. La classe .hidden
+   sert à masquer un élément ; le JavaScript l'ajoute ou la retire pour afficher
+   ou cacher les écrans et les modales.
+   ------------------------------------------------------------ */
 
 * { box-sizing: border-box; }
 
@@ -195,6 +207,12 @@ button {
 
 /* ------------------------------------------------------------
    3. Décor de fond
+   ------------------------------------------------------------ */
+/* Cette couche reste derrière le contenu (z-index: 0) et ne reçoit aucun clic
+   (pointer-events: none). Les boules et la grille sont dessinées avec des
+   dégradés. Les « keyframes » décrivent les étapes d'une animation : orbFloat
+   fait flotter les boules. Le filtre blur() les floute, et mask-image rend la
+   grille progressivement transparente sur les bords.
    ------------------------------------------------------------ */
 
 .bg-scene {
@@ -250,6 +268,8 @@ button {
   mask-image: radial-gradient(ellipse at 50% 30%, black 10%, transparent 75%);
   -webkit-mask-image: radial-gradient(ellipse at 50% 30%, black 10%, transparent 75%);
 }
+/* Deux dégradés croisés dessinent la grille ; mask-image la fait disparaître
+   vers les bords pour un rendu plus doux. */
 
 .bg-vignette {
   position: absolute;
@@ -258,6 +278,8 @@ button {
 }
 
 @keyframes orbFloat {
+/* Une règle @keyframes nomme une animation : entre 0 % et 100 %, on décrit les
+   transformations subies par l'élément. Ici les boules dérivent lentement. */
   0%   { transform: translate3d(0, 0, 0) scale(1); }
   50%  { transform: translate3d(3vw, 2vh, 0) scale(1.08); }
   100% { transform: translate3d(-2vw, 4vh, 0) scale(0.96); }
@@ -265,6 +287,11 @@ button {
 
 /* ------------------------------------------------------------
    4. Écrans & transitions
+   ------------------------------------------------------------ */
+/* Tous les écrans portent la classe .screen et sont masqués (display: none).
+   Seul celui qui a aussi .is-active s'affiche en flexbox (display: flex).
+   L'animation screenIn fait apparaître l'écran en glissant depuis le bas, et
+   flex-direction: column empile ses enfants verticalement.
    ------------------------------------------------------------ */
 
 .screen {
@@ -285,6 +312,12 @@ button {
 
 /* ------------------------------------------------------------
    5. Barres supérieures & boutons icônes
+   ------------------------------------------------------------ */
+/* display: flex aligne les éléments sur une ligne et justify-content:
+   space-between pousse les groupes aux extrémités. Les pseudo-classes :hover
+   et :active décrivent l'apparence au survol et au clic ; transition rend le
+   changement progressif au lieu d'être brutal. Le ::after avec content:
+   attr(title) affiche le texte de l'attribut title comme petit libellé.
    ------------------------------------------------------------ */
 
 .top-bar, .game-top-bar {
@@ -322,6 +355,8 @@ button {
   transition: all 0.22s ease;
 }
 .icon-btn:hover {
+/* backdrop-filter floute ce qui se trouve derrière le bouton : c'est l'effet
+   de verre dépoli. La version -webkit- est destinée à Safari. */
   color: var(--text);
   border-color: rgba(0, 174, 240, 0.55);
   box-shadow: var(--shadow-cyan);
@@ -362,6 +397,12 @@ button {
 
 /* ------------------------------------------------------------
    6. Icônes locales (masques SVG)
+   ------------------------------------------------------------ */
+/* Au lieu d'images séparées, chaque icône est un SVG intégré directement dans
+   la feuille de style (data:image/svg+xml) : aucune ressource distante n'est
+   chargée. mask-image découpe la couleur de fond (currentColor) selon la forme
+   du dessin : changer la couleur du texte change donc celle de l'icône. Les
+   variantes -webkit- sont destinées à Safari et aux anciens navigateurs.
    ------------------------------------------------------------ */
 
 .icon {
@@ -430,6 +471,11 @@ body[data-mode="light"] .theme-toggle { color: var(--text-dim); }
 
 /* ------------------------------------------------------------
    7. Écran d'accueil
+   ------------------------------------------------------------ */
+/* L'accueil est organisé en colonne (flexbox) : logo, carte du joueur, menu.
+   .menu-grid utilise grid pour placer les boutons sur deux colonnes, tandis
+   que .menu-primary occupe toute la largeur (grid-column: 1 / -1). Les :hover
+   ajoutent un léger soulèvement et un reflet qui traverse le bouton.
    ------------------------------------------------------------ */
 
 .home-main {
@@ -706,6 +752,10 @@ body[data-mode="light"] .theme-toggle { color: var(--text-dim); }
 /* ------------------------------------------------------------
    8. Écran de sélection du mode
    ------------------------------------------------------------ */
+/* Même organisation en colonne. .difficulty-grid est une grille de quatre
+   cartes ; .game-options rassemble les choix dans des groupes de boutons
+   « segmentés ». La classe is-active marque l'option sélectionnée.
+   ------------------------------------------------------------ */
 
 .mode-main {
   flex: 1;
@@ -886,6 +936,14 @@ body[data-mode="light"] .theme-toggle { color: var(--text-dim); }
 
 /* ------------------------------------------------------------
    9. Écran de jeu — disposition
+   ------------------------------------------------------------ */
+/* grid-template-areas nomme les zones de la page (le plateau en haut, puis
+   les panneaux gauche et droite) : c'est une façon lisible de décrire la mise
+   en page. .board impose dix colonnes et dix lignes égales : la grille du jeu.
+   aspect-ratio: 1 / 1 garde le plateau carré quelle que soit la fenêtre. Les
+   calques .pieces-layer et .fx-canvas sont posés au-dessus des cases grâce à
+   position: absolute et z-index. Les @keyframes (hintPulse, capturePulse,
+   impactShake) animent les indices et les captures.
    ------------------------------------------------------------ */
 
 .game-top-bar {
@@ -1114,6 +1172,11 @@ body[data-theme="glass"] .square.light { backdrop-filter: blur(6px); }
 /* ------------------------------------------------------------
    10. Pièces 3D
    ------------------------------------------------------------ */
+/* Une pièce est positionnée en pourcentage sur le plateau (10 % = une case).
+   Une dame est représentée par deux disques empilés ; sa couronne est un masque
+   SVG coloré en doré. La formule calc(0.26s * var(--anim-speed)) adapte la durée de
+   la transition au réglage de vitesse choisi par le joueur.
+   ------------------------------------------------------------ */
 
 .piece {
   position: absolute;
@@ -1203,6 +1266,8 @@ body[data-theme="glass"] .square.light { backdrop-filter: blur(6px); }
   pointer-events: none;
 }
 .piece.king .piece-crown {
+/* La couronne est un dessin SVG utilisé comme masque : sa couleur vient de
+   background-color, donc changer le thème change aussi celle de la couronne. */
   top: 34%;
   width: 44%;
   height: 44%;
@@ -1321,6 +1386,11 @@ body[data-theme="glass"] .square.light { backdrop-filter: blur(6px); }
 
 /* ------------------------------------------------------------
    11. Panneaux joueurs
+   ------------------------------------------------------------ */
+/* Les panneaux adversaire et joueur sont symétriques : avatar, nom, compteurs
+   et chronomètre. La classe is-active met en évidence celui dont c'est le tour.
+   :nth-child(odd) colore une ligne sur deux de l'historique, et :disabled
+   rend un bouton inutilisable en réduisant son opacité.
    ------------------------------------------------------------ */
 
 .player-panel {
@@ -1587,6 +1657,8 @@ body[data-theme="glass"] .square.light { backdrop-filter: blur(6px); }
 .history-list li:nth-child(odd) { background: rgba(255, 255, 255, 0.025); }
 .history-list:empty::after {
   content: 'Aucun coup joué pour l’instant.';
+/* :empty signifie « sans aucun enfant » : le message apparaît donc tout seul
+   quand l'historique est vide, sans texte supplémentaire dans le HTML. */
   display: block;
   padding: 14px 6px;
   color: var(--text-faint);
@@ -1651,6 +1723,11 @@ body[data-theme="glass"] .square.light { backdrop-filter: blur(6px); }
 
 /* ------------------------------------------------------------
    12. Superpositions (pause) / indicateur de réflexion IA
+   ------------------------------------------------------------ */
+/* .pause-overlay recouvre le plateau avec un fond semi-transparent et un flou
+   (backdrop-filter). L'indicateur de réflexion de l'IA reste, lui, un petit
+   bandeau : aucune modale ne bloque le jeu pendant le calcul.
+   @keyframes spin fait tourner le cercle de chargement à l'infini.
    ------------------------------------------------------------ */
 
 .pause-overlay {
@@ -1737,6 +1814,10 @@ body[data-theme="glass"] .square.light { backdrop-filter: blur(6px); }
 /* ------------------------------------------------------------
    13. Boutons premium
    ------------------------------------------------------------ */
+/* Deux styles de boutons : .btn-premium (dégradé coloré, action principale)
+   et .btn-ghost (discret, action secondaire). Les pseudo-classes :hover et
+   :active, ainsi que la classe .danger, changent l'apparence selon le contexte.
+   ------------------------------------------------------------ */
 
 .btn-premium {
   display: inline-flex;
@@ -1796,6 +1877,13 @@ body[data-theme="glass"] .square.light { backdrop-filter: blur(6px); }
 
 /* ------------------------------------------------------------
    14. Modales
+   ------------------------------------------------------------ */
+/* .modal-layer est un calque fixe qui occupe tout l'écran (position: fixed,
+   inset: 0) et centre la carte avec flexbox. Le fond est flouté grâce à
+   backdrop-filter. .modal-card défile verticalement (overflow-y: auto) quand
+   le contenu est trop haut, et @keyframes modalIn anime l'ouverture. Les
+   sous-parties (paramètres, aide, fin de partie, historique) partagent cette
+   même structure.
    ------------------------------------------------------------ */
 
 .modal-layer {
@@ -1985,6 +2073,8 @@ input[type="range"]::-moz-range-thumb {
   transform: translateX(20px);
   background: #fff;
 }
+/* Le signe + vise l'élément placé juste après : quand la case est cochée, on
+   décale la pastille de l'interrupteur. */
 
 .settings-footer {
   display: flex;
@@ -2168,6 +2258,10 @@ input[type="range"]::-moz-range-thumb {
 /* ------------------------------------------------------------
    15. Toasts
    ------------------------------------------------------------ */
+/* Messages temporaires en haut à droite. pointer-events: none rend la zone
+   « transparente » aux clics pour ne pas gêner le jeu. Les animations
+   toastIn et toastOut font entrer puis sortir les messages.
+   ------------------------------------------------------------ */
 
 .toast-container {
   position: fixed;
@@ -2210,6 +2304,11 @@ input[type="range"]::-moz-range-thumb {
 
 /* ------------------------------------------------------------
    16. Responsive
+   ------------------------------------------------------------ */
+/* Une « media query » (@media) applique des règles seulement quand la largeur
+   de l'écran passe sous un certain seuil. Ici on réduit le nombre de colonnes,
+   on empile les panneaux et on raccourcit les libellés des boutons : le jeu
+   reste utilisable sur téléphone.
    ------------------------------------------------------------ */
 
 @media (max-width: 1200px) {
@@ -2298,6 +2397,11 @@ input[type="range"]::-moz-range-thumb {
 /* ------------------------------------------------------------
    17. Préférences de mouvement réduit
    ------------------------------------------------------------ */
+/* Respecte le réglage système « réduire les animations » : presque toutes les
+   animations et transitions sont annulées. Le :focus-visible dessine un
+   contour utile à la navigation au clavier. Les ::-webkit-scrollbar
+   personnalisent la barre de défilement (préfixe propre à Chrome et Safari).
+   ------------------------------------------------------------ */
 
 body.no-animations *,
 body.reduced-motion * {
@@ -2334,6 +2438,10 @@ button:focus-visible, select:focus-visible, input:focus-visible {
 
 /* ------------------------------------------------------------
     18. Mode clair — ajustements des surfaces
+    ------------------------------------------------------------ */
+/* Quand le mode clair est actif, la palette est remplacée : fonds pâles,
+   textes foncés, ombres plus douces. Ces règles sont placées après les autres
+   pour pouvoir écraser les valeurs du thème sombre.
     ------------------------------------------------------------ */
 
 body[data-mode="light"] {
@@ -2400,6 +2508,10 @@ body[data-mode="light"] ::-webkit-scrollbar-thumb { background: rgba(0, 78, 160,
 
 /* ------------------------------------------------------------
     19. Aperçu en direct des paramètres
+    ------------------------------------------------------------ */
+/* Petit plateau affiché dans les paramètres : il montre immédiatement l'effet
+   des choix de thème, de style de pions et d'orientation avant de lancer une
+   partie.
     ------------------------------------------------------------ */
 
 .settings-preview {
@@ -2497,6 +2609,10 @@ body[data-mode="light"] ::-webkit-scrollbar-thumb { background: rgba(0, 78, 160,
 /* ------------------------------------------------------------
     20. Coordonnées et dernier coup
     ------------------------------------------------------------ */
+/* Petites lettres et chiffres sur le plateau, plus le surlignage du dernier
+   coup joué. Les pseudo-éléments ::before et ::after créent ces décorations
+   sans avoir besoin d'ajouter des balises dans le HTML.
+    ------------------------------------------------------------ */
 
 .coord-label {
   position: absolute;
@@ -2539,6 +2655,10 @@ body[data-mode="light"] .coord-label {
 
 /* ------------------------------------------------------------
     21. Replay des parties
+    ------------------------------------------------------------ */
+/* Le revoir affiche le plateau et la liste des coups. La classe is-current
+   signale le coup affiché ; le curseur de type range et les boutons pilotent
+   la lecture.
     ------------------------------------------------------------ */
 
 .history-table .h-replay {
@@ -2650,6 +2770,9 @@ body[data-mode="light"] .coord-label {
 /* ------------------------------------------------------------
     22. Puzzles tactiques
     ------------------------------------------------------------ */
+/* Mise en page du puzzle : plateau à gauche, énoncé et actions à droite.
+   .puzzle-feedback change de couleur selon le résultat (success ou error).
+    ------------------------------------------------------------ */
 
 .puzzles-body {
   display: flex;
@@ -2728,6 +2851,10 @@ body[data-mode="light"] .coord-label {
 
 /* ------------------------------------------------------------
     23. Profil et succès
+    ------------------------------------------------------------ */
+/* Champs de texte des profils et grille des succès. content: attr(title)
+   réutilise le texte de l'attribut title comme libellé visible. La classe
+   .locked atténue les succès non débloqués sans cacher leur icône.
     ------------------------------------------------------------ */
 
 .field input[type="text"] {
@@ -2814,6 +2941,10 @@ body[data-mode="light"] .field input[type="text"] {
 
 /* ------------------------------------------------------------
     24. Mode coach
+    ------------------------------------------------------------ */
+/* Barre d'évaluation : .eval-track est le rail, .eval-fill la portion colorée
+   dont on déplace le bord gauche (left) selon la note. Les transitions rendent
+   le mouvement fluide et flexbox aligne les éléments de la barre.
     ------------------------------------------------------------ */
 
 .coach-bar {

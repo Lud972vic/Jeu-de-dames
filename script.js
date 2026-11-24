@@ -5,19 +5,61 @@
  * animations, les sons, les paramètres, les statistiques et les
  * sauvegardes locales. Aucune dépendance réseau.
  */
+/**
+ * GUIDE DE LECTURE DU CONTRÔLEUR (à lire avant de modifier le fichier)
+ * -------------------------------------------------------------------
+ * Rôle : ce fichier est le « chef d'orchestre » de l'application. Il relie le
+ * moteur des règles, le plateau affiché, l'IA, les animations, les sons, les
+ * réglages, les statistiques et les sauvegardes. Les règles du jeu elles-mêmes
+ * ne sont pas ici : elles vivent dans les autres modules du dossier.
+ *
+ * Les concepts JavaScript rencontrés :
+ * - IIFE : tout le code est enfermé dans une fonction appelée immédiatement,
+ *   afin de ne pas encombrer l'espace global. `global` désigne la fenêtre.
+ * - class et constructor : `CheckersApp` est un modèle d'objet. Le `constructor`
+ *   prépare les propriétés au moment où l'on écrit `new CheckersApp()`.
+ * - `this` : dans une méthode, `this` est l'objet CheckersApp en cours de travail.
+ * - callback : une fonction passée à une autre, que le navigateur rappellera
+ *   plus tard (par exemple un gestionnaire de clic).
+ * - flèche `=>` : écriture courte d'une fonction ; elle conserve le `this` du contexte.
+ * - async / await et Promise : une Promise est un résultat disponible plus tard.
+ *   `await` attend ce résultat sans figer le navigateur (import de fichier, plein écran).
+ * - événements DOM : `addEventListener` abonne une callback à un clic, une saisie,
+ *   une touche du clavier ou un changement d'onglet.
+ * - tableau (Array) : liste ordonnée, par exemple `history` ou `board`.
+ * - objet : ensemble de propriétés nommées, par exemple `settings` ou `clocks`.
+ * - stockage local : `StorageManager` garde parties, réglages et profils dans le
+ *   navigateur ; ils restent disponibles même sans connexion.
+ *
+ * Comment naviguer : le fichier est découpé en sections signalées par des bandeaux
+ * « ==== ». Dans l'ordre : Initialisation, Navigation et événements, Écrans et
+ * parties, Interaction plateau, Mode coach, Intelligence artificielle (Worker),
+ * Chronomètre, Pause, Fin de partie, Interface de jeu, Accueil et statistiques,
+ * Puzzles tactiques, Replay, Paramètres, Modales, Audio et notifications,
+ * Sauvegarde, Profils, Service Worker et Utilitaires. Repérez le bandeau qui
+ * correspond à votre question, puis lisez la méthode juste en dessous.
+ */
+
 (function (global) {
   'use strict';
 
+  /** Configuration globale : couleurs, difficultés, clés de stockage, limites. */
   const CFG = global.GameConfig;
+  /** Module des règles : plateau initial, coups légaux, notation. */
   const Rules = global.CheckersRules;
+  /** Raccourci vers la valeur qui représente la couleur blanche. */
   const WHITE = CFG.WHITE;
+  /** Raccourci vers la valeur qui représente la couleur noire. */
   const BLACK = CFG.BLACK;
 
+  /** Raccourci : renvoie le premier élément HTML qui correspond au sélecteur. */
   const $ = (selector, root) => (root || global.document).querySelector(selector);
+  /** Raccourci : renvoie tous les éléments correspondants sous forme de tableau. */
   const $$ = (selector, root) => Array.prototype.slice.call(
     (root || global.document).querySelectorAll(selector)
   );
 
+  /** Traduction des raisons de fin de partie en phrases lisibles par le joueur. */
   const REASON_LABELS = {
     'no-pieces': 'Toutes les pièces adverses ont été capturées.',
     'no-moves': 'L’adversaire n’a plus aucun coup légal.',
@@ -27,6 +69,13 @@
   };
 
   class CheckersApp {
+    /**
+     * Prépare toutes les mémoires de l'application au moment de sa création.
+     * Aucun argument : le constructeur est appelé automatiquement par `new`.
+     * @returns {void} Rien : il initialise seulement les propriétés de l'objet.
+     * Concept JS : `this.xxx` est une propriété de l'objet ; `gameToken` et `aiToken`
+     *   sont des compteurs qui permettent d'ignorer les réponses périmées.
+     */
     constructor() {
       this.engine = new global.GameEngine();
       this.renderer = null;
@@ -80,6 +129,13 @@
      * Initialisation
      * ============================================================ */
 
+    /**
+     * Démarre l'application : récupère les éléments HTML, charge les réglages et les
+     * scores, installe les écouteurs d'événements puis affiche l'accueil.
+     * @returns {void} Rien : l'application est prête à être utilisée.
+     * Concept JS : les fonctions fléchées `=>` sont données à `addEventListener` ;
+     *   le navigateur les rappellera quand l'événement arrivera.
+     */
     init() {
       this.cacheDom();
 
@@ -118,11 +174,17 @@
       global.document.addEventListener('pointerdown', unlock, { once: true });
       global.document.addEventListener('keydown', unlock, { once: true });
 
+      // Le chronomètre est relu toutes les 250 ms ; tickClock ignore les pauses.
       this.clockTimer = global.setInterval(() => this.tickClock(), 250);
       this.registerServiceWorker();
       this.bindPersistence();
     }
 
+    /**
+     * Enregistre dans `this.dom` les éléments HTML utilisés très souvent.
+     * @returns {void} Rien : l'objet `dom` est rempli de références aux éléments.
+     * Concept JS : un objet regroupe des valeurs sous forme de paires nom/valeur.
+     */
     cacheDom() {
       this.dom = {
         screens: {
@@ -278,7 +340,15 @@
      * Navigation et événements
      * ============================================================ */
 
+    /**
+     * Installe tous les gestionnaires d'événements : clics, saisies, touches,
+     * touche Échap et changements de connexion.
+     * @returns {void} Rien : les écouteurs restent actifs pendant toute la session.
+     * Concept JS : une callback est une fonction confiée au navigateur, qui la
+     *   rappellera au moment du clic ou de la saisie.
+     */
     bindEvents() {
+      // Petit outil local : on n'attache un écouteur que si l'élément existe.
       const on = (selector, event, handler) => {
         const el = $(selector);
         if (el) el.addEventListener(event, handler);
@@ -428,6 +498,11 @@
       global.addEventListener('offline', () => this.toast('Mode hors ligne : le jeu reste disponible.', 'info'));
     }
 
+    /**
+     * Ferme les fenêtres modales lors d'un clic sur un bouton data-close ou à l'extérieur.
+     * @returns {void} Rien : un écouteur est placé sur tout le document.
+     * Concept JS : on écoute le document entier plutôt que chaque bouton (délégation).
+     */
     bindModalSystem() {
       global.document.addEventListener('click', (event) => {
         const closer = event.target.closest('[data-close]');
@@ -442,6 +517,11 @@
       });
     }
 
+    /**
+     * Relie chaque champ du panneau de réglages au module SettingsManager.
+     * @returns {void} Rien : les réglages sont sauvegardés au fur et à mesure des changements.
+     * Concept JS : la petite fonction locale `set` évite de répéter les mêmes mises à jour.
+     */
     bindSettings() {
       const set = (key, value) => {
         global.SettingsManager.set(key, value);
@@ -557,31 +637,60 @@
       this.buildSettingsPreview();
     }
 
+    /**
+     * Marque un seul bouton comme actif dans un groupe de boutons segmentés.
+     * @param {string} selector - Sélecteur CSS du groupe de boutons.
+     * @param {Element} activeButton - Bouton à mettre en évidence.
+     * @returns {void} Rien : les classes CSS des boutons sont ajustées.
+     * Concept JS : `classList.toggle` ajoute ou retire une classe CSS selon le booléen.
+     */
     setSegmentedActive(selector, activeButton) {
       $$(selector + ' .seg-btn').forEach((btn) => {
         btn.classList.toggle('is-active', btn === activeButton);
       });
     }
 
+    /**
+     * Marque le bouton d'orientation du plateau choisi comme actif.
+     * @param {Element} activeButton - Bouton à mettre en évidence.
+     * @returns {void} Rien : les classes CSS sont ajustées.
+     * Concept JS : les boutons sont comparés avec `===` pour trouver le bon.
+     */
     setFlipActive(activeButton) {
       $$('#modal-settings [data-flip]').forEach((btn) => {
         btn.classList.toggle('is-active', btn === activeButton);
       });
     }
 
+    /**
+     * Marque le bouton de thème clair ou sombre choisi comme actif.
+     * @param {Element} activeButton - Bouton à mettre en évidence.
+     * @returns {void} Rien : les classes CSS sont ajustées.
+     * Concept JS : la même logique que setSegmentedActive, sur un autre groupe.
+     */
     setModeActive(activeButton) {
       $$('#modal-settings [data-mode-value]').forEach((btn) => {
         btn.classList.toggle('is-active', btn === activeButton);
       });
     }
 
+    /**
+     * Marque l'avatar choisi comme actif dans les réglages.
+     * @param {Element} activeButton - Bouton d'avatar à mettre en évidence.
+     * @returns {void} Rien : les classes CSS sont ajustées.
+     * Concept JS : `forEach` parcourt tous les boutons du groupe.
+     */
     setAvatarActive(activeButton) {
       $$('#modal-settings [data-avatar]').forEach((btn) => {
         btn.classList.toggle('is-active', btn === activeButton);
       });
     }
 
-    /** Applique le nom et l'avatar choisis partout dans l'interface. */
+    /**
+     * Affiche le nom et l'avatar choisis partout où ils apparaissent.
+     * @returns {void} Rien : textes et classes CSS sont remplacés.
+     * Concept JS : `|| 'Joueur'` fournit une valeur par défaut si le réglage manque.
+     */
     updateProfileUI() {
       const name = (this.settings && this.settings.playerName) || 'Joueur';
       const avatar = (this.settings && this.settings.playerAvatar) || 'user';
@@ -590,7 +699,11 @@
       if (this.gameActive) this.syncPanels();
     }
 
-    /** Affiche la liste des succès débloqués et verrouillés. */
+    /**
+     * Recharge les statistiques puis affiche la grille des succès, débloqués ou non.
+     * @returns {void} Rien : la modale des succès est ouverte.
+     * Concept JS : `filter` garde seulement les succès dont la propriété `unlocked` est vraie.
+     */
     openAchievements() {
       this.closeModal('modal-puzzles');
       this.closeModal('modal-replay');
@@ -614,7 +727,11 @@
       this.openModal('modal-achievements');
     }
 
-    /** Met à jour les libellés des boutons Sombre / Clair. */
+    /**
+     * Met à jour les libellés des boutons de thème et le bouton actif du panneau.
+     * @returns {void} Rien : attributs HTML et classes sont modifiés.
+     * Concept JS : `setAttribute` change un attribut comme `title` ou `aria-label`.
+     */
     updateThemeUI() {
       const light = this.settings && this.settings.mode === 'light';
       const label = light ? 'Activer le mode sombre' : 'Activer le mode clair';
@@ -628,7 +745,11 @@
       if (active) this.setModeActive(active);
     }
 
-    /** Bascule le mode d'affichage depuis n'importe quel écran. */
+    /**
+     * Bascule du thème clair au thème sombre et rafraîchit l'aperçu.
+     * @returns {void} Rien : un court message confirme le changement.
+     * Concept JS : SettingsManager conserve le choix pour la prochaine ouverture.
+     */
     toggleMode() {
       const mode = global.SettingsManager.toggleMode();
       this.settings = global.SettingsManager.settings;
@@ -637,7 +758,11 @@
       this.toast(mode === 'light' ? 'Mode clair activé.' : 'Mode sombre activé.', 'info', 1600);
     }
 
-    /** Construit le mini-plateau d'aperçu (une seule fois). */
+    /**
+     * Construit une seule fois le mini-plateau visible dans les réglages.
+     * @returns {void} Rien : les cases et les pièces d'exemple sont ajoutées au DOM.
+     * Concept JS : `map` transforme chaque élément d'un tableau en un autre.
+     */
     buildSettingsPreview() {
       const board = this.dom.previewBoard;
       if (!board || board.childElementCount) return;
@@ -670,7 +795,11 @@
       this.renderSettingsPreview();
     }
 
-    /** Applique l'orientation choisie à l'aperçu. */
+    /**
+     * Replace les pièces de l'aperçu selon l'orientation choisie du plateau.
+     * @returns {void} Rien : les styles CSS de position sont modifiés.
+     * Concept JS : `!!` convertit une valeur en booléen vrai ou faux.
+     */
     renderSettingsPreview() {
       const flipped = !!(this.settings && this.settings.boardFlipped);
       (this.previewPieces || []).forEach((p) => {
@@ -679,7 +808,11 @@
       });
     }
 
-    /** Rejoue l'animation de promotion dans l'aperçu. */
+    /**
+     * Rejoue dans l'aperçu l'animation qui transforme un pion en dame.
+     * @returns {void} Rien : l'animation et éventuellement le son sont déclenchés.
+     * Concept JS : retirer puis remettre une classe CSS force l'animation à recommencer.
+     */
     playPreviewPromotion() {
       const demo = (this.previewPieces || []).find((p) => p.demo);
       if (!demo) return;
@@ -704,6 +837,12 @@
      * Écrans et parties
      * ============================================================ */
 
+    /**
+     * N'affiche qu'un écran à la fois : accueil, choix du mode ou partie.
+     * @param {string} name - Clé de l'écran : `home`, `mode` ou `game`.
+     * @returns {void} Rien : les classes CSS des écrans sont changées.
+     * Concept JS : `Object.keys` donne la liste des clés d'un objet.
+     */
     showScreen(name) {
       Object.keys(this.dom.screens).forEach((key) => {
         const screen = this.dom.screens[key];
@@ -719,6 +858,11 @@
       }
     }
 
+    /**
+     * Prépare l'écran de choix du mode avec les réglages en attente.
+     * @returns {void} Rien : l'écran `mode` devient visible.
+     * Concept JS : `this.pending` est un petit objet qui retient le choix avant le lancement.
+     */
     openModeScreen() {
       this.pending.color = WHITE;
       this.pending.minutes = this.settings.timerMinutes;
@@ -732,6 +876,13 @@
       this.showScreen('mode');
     }
 
+    /**
+     * Lance une nouvelle partie avec les options données et remet tous les états à zéro.
+     * @param {Object} options - Peut contenir `mode`, `difficulty`, `playerColor` et `timerMinutes`.
+     * @returns {void} Rien : la partie devient active.
+     * Concept JS : `options = options || {}` évite une erreur si aucun argument n'est fourni.
+     *   `gameToken++` invalide les réponses de l'IA de la partie précédente.
+     */
     startGame(options) {
       options = options || {};
       const mode = options.mode === 'pvp' ? 'pvp' : 'ai';
@@ -790,6 +941,11 @@
       this.maybeAITurn();
     }
 
+    /**
+     * Reprend la dernière partie enregistrée automatiquement.
+     * @returns {void} Rien : un message d'erreur s'affiche si la sauvegarde est inutilisable.
+     * Concept JS : la clé de stockage est lue puis transmise à `loadSavePayload`.
+     */
     resumeGame() {
       const key = CFG.STORAGE.KEYS.SAVE;
       const save = global.StorageManager.get(key, null);
@@ -799,7 +955,13 @@
       }
     }
 
-    /** Charge une sauvegarde (automatique ou manuelle) et restaure l'interface. */
+    /**
+     * Vérifie une sauvegarde puis restaure le plateau, les horloges et l'interface.
+     * @param {Object} save - Données lues dans le stockage local.
+     * @param {Object} options - Peut contenir `key` (clé à effacer si invalide) et `manual`.
+     * @returns {boolean} `true` si le chargement a réussi, `false` sinon.
+     * Concept JS : un booléen indique ici le succès de l'opération.
+     */
     loadSavePayload(save, options) {
       options = options || {};
       const invalid = () => {
@@ -857,12 +1019,22 @@
       return true;
     }
 
+    /**
+     * Relance une partie avec exactement la même configuration que la précédente.
+     * @returns {void} Rien : `startGame` fait le reste.
+     * Concept JS : `Object.assign({}, ...)` copie un objet pour ne pas modifier l'original.
+     */
     replay() {
       const config = Object.assign({}, this.currentConfig);
       this.closeModal('modal-gameover');
       this.startGame(config);
     }
 
+    /**
+     * Quitte la partie et revient à l'accueil, sans demander de confirmation.
+     * @returns {void} Rien : l'écran `home` est affiché.
+     * Concept JS : `cancelAI` arrête d'abord les calculs qui pourraient finir trop tard.
+     */
     goHome() {
       this.cancelAI();
       this.closeAllModals();
@@ -872,6 +1044,11 @@
       this.showScreen('home');
     }
 
+    /**
+     * Demande avant de quitter ; sauvegarde la progression si la partie a commencé.
+     * @returns {void} Rien : la réponse est traitée plus tard par une callback `.then`.
+     * Concept JS : une Promise est un résultat disponible plus tard (ici vrai ou faux).
+     */
     confirmQuit() {
       if (!this.gameActive) {
         this.goHome();
@@ -895,6 +1072,11 @@
       });
     }
 
+    /**
+     * Demande confirmation avant d'abandonner la partie et d'en recommencer une autre.
+     * @returns {void} Rien : la décision est traitée dans le `.then`.
+     * Concept JS : la modale de confirmation fournit la valeur attendue.
+     */
     confirmRestart() {
       if (!this.gameActive) return;
       this.askConfirm('Recommencer une nouvelle partie ? La partie actuelle sera abandonnée.', 'RECOMMENCER')
@@ -907,6 +1089,11 @@
      * Interaction plateau
      * ============================================================ */
 
+    /**
+     * Indique si le joueur humain a le droit de cliquer sur le plateau maintenant.
+     * @returns {boolean} `true` si l'interaction est autorisée, `false` sinon.
+     * Concept JS : plusieurs conditions reliées par `||` signifient « si l'une est vraie ».
+     */
     canHumanInteract() {
       if (!this.gameActive || this.paused || this.busy || this.aiThinking || this.engine.status.over) {
         return false;
@@ -915,6 +1102,12 @@
       return true;
     }
 
+    /**
+     * Traite un clic sur une case : jouer un coup visé ou sélectionner une pièce.
+     * @param {number} square - Numéro de la case cliquée (de 0 à 99).
+     * @returns {void} Rien : sélection et surlignages sont mis à jour.
+     * Concept JS : `filter` garde les coups dont la destination est la case cliquée.
+     */
     onSquareClick(square) {
       if (!this.canHumanInteract()) return;
       const player = this.engine.currentPlayer;
@@ -942,6 +1135,12 @@
       }
     }
 
+    /**
+     * Sélectionne une pièce et montre ses coups possibles, ou refuse la sélection.
+     * @param {number} square - Numéro de la case de la pièce.
+     * @returns {void} Rien : un son, et parfois un message d'erreur, sont émis.
+     * Concept JS : `some` vérifie si au moins un coup est une capture.
+     */
     selectSquare(square) {
       const moves = this.engine.getMovesForSquare(square);
       if (moves.length === 0) {
@@ -959,6 +1158,14 @@
       global.AudioManager.play('click');
     }
 
+    /**
+     * Joue un coup : le valide, anime le déplacement, rafraîchit l'écran puis sauvegarde.
+     * @param {Object} move - Coup à jouer : cases de départ/arrivée, captures, promotion.
+     * @param {Object} options - Peut contenir `ai` et `stats` quand le coup vient de l'IA.
+     * @returns {Promise<void>} Une Promise résolue quand le coup est entièrement traité.
+     * Concept JS : `await` met cette fonction en pause jusqu'à la fin de l'animation,
+     *   sans bloquer le navigateur. Le `token` sert à ignorer un coup d'une partie finie.
+     */
     async executeMove(move, options) {
       options = options || {};
       if (!this.gameActive || this.busy || this.engine.status.over) return;
@@ -1029,6 +1236,14 @@
       }
     }
 
+    /**
+     * Déclenche son, vibration et effets visuels au moment d'une capture.
+     * @param {number} square - Case où la pièce disparaît.
+     * @param {number} index - Numéro de la capture dans une rafle.
+     * @param {number} total - Nombre total de captures de la rafle.
+     * @returns {void} Rien : les effets sont lancés.
+     * Concept JS : `Math.max` et `Math.min` bornent les valeurs pour éviter les dépassements.
+     */
     onCaptureEffect(square, index, total) {
       global.AudioManager.play('capture');
       const count = Math.max(1, total || 1);
@@ -1067,7 +1282,11 @@
       );
     }
 
-    /** Secousse courte du plateau, réinitialisable pendant une rafle. */
+    /**
+     * Fait trembler le plateau peu de temps, même pendant une rafle.
+     * @returns {void} Rien : la classe CSS est ajoutée puis retirée après 360 ms.
+     * Concept JS : `clearTimeout` annule un timer précédent pour repartir proprement.
+     */
     shakeBoard() {
       const frame = this.dom.boardFrame;
       if (!frame) return;
@@ -1078,7 +1297,14 @@
       this._shakeTimer = global.setTimeout(() => frame.classList.remove('impact'), 360);
     }
 
-    /** Flash rouge plein écran centré sur la pièce qui vient de disparaître. */
+    /**
+     * Affiche un flash rouge temporaire centré sur la pièce capturée.
+     * @param {number} x - Position horizontale en pixels.
+     * @param {number} y - Position verticale en pixels.
+     * @param {number} step - Numéro de la capture ; au-delà de 1, le flash est plus fort.
+     * @returns {void} Rien : l'élément créé est retiré après 520 ms.
+     * Concept JS : un élément fabriqué par `createElement` est ajouté puis enlevé du DOM.
+     */
     flashScreen(x, y, step) {
       if (!global.document.createElement) return;
       const overlay = global.document.createElement('div');
@@ -1092,7 +1318,15 @@
       }, 520);
     }
 
-    /** Texte flottant humoristique au-dessus de la case capturée. */
+    /**
+     * Affiche un texte humoristique flottant au-dessus de la case capturée.
+     * @param {number} x - Position horizontale en pixels.
+     * @param {number} y - Position verticale en pixels.
+     * @param {number} total - Nombre de captures : change la liste des textes.
+     * @param {number} step - Numéro de la capture dans la rafle.
+     * @returns {void} Rien : le texte disparaît après 900 ms.
+     * Concept JS : un tableau de chaînes contient tous les textes possibles.
+     */
     showCaptureTaunt(x, y, total, step) {
       const frame = this.dom.boardFrame;
       if (!frame || !global.document.createElement) return;
@@ -1109,6 +1343,12 @@
       global.setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, 900);
     }
 
+    /**
+     * Annule le coup précédent (ou un cycle complet contre l'IA) et remet l'écran à jour.
+     * @returns {void} Rien : la sauvegarde est aussi corrigée.
+     * Concept JS : `while` boucle tant que la condition est vraie ; `guard` limite les tours.
+     *   Contre l'IA, on recule jusqu'au prochain tour du joueur humain.
+     */
     undoMove() {
       if (!this.gameActive || this.busy || this.aiThinking || !this.engine.canUndo()) return;
       if (this.engine.mode === 'ai') {
@@ -1151,6 +1391,11 @@
      * Mode coach
      * ============================================================ */
 
+    /**
+     * Affiche ou masque la barre du coach selon le réglage choisi.
+     * @returns {void} Rien : la barre d'évaluation est remise à zéro si le coach est off.
+     * Concept JS : `classList.toggle('hidden', condition)` montre ou cache un élément.
+     */
     updateCoachUI() {
       if (!this.dom.coachBar) return;
       const enabled = !!(this.settings && this.settings.coachMode);
@@ -1162,7 +1407,13 @@
       }
     }
 
-    /** Lance une analyse rapide de la position du joueur (sans jouer le coup). */
+    /**
+     * Lance une analyse rapide de la position du joueur, sans jouer le coup.
+     * Un Worker fait le calcul si possible ; sinon l'IA locale sert de secours.
+     * @returns {void} Rien : le résultat est gardé dans `this.coachAnalysis`.
+     * Concept JS : un Worker travaille à part ; ses réponses arrivent par la callback
+     *   `onmessage`. `requestId` permet d'ignorer une réponse devenue ancienne.
+     */
     maybeCoachAnalysis() {
       if (!this.settings || !this.settings.coachMode || !this.gameActive ||
           this.paused || this.busy || this.aiThinking || this.coachPending ||
@@ -1175,6 +1426,7 @@
       const board = this.engine.board.slice();
       const player = this.engine.currentPlayer;
       const boardKey = board.join(',');
+      // Ce drapeau empêche de lancer deux analyses du coach en même temps.
       this.coachPending = true;
 
       const finish = (result) => {
@@ -1234,7 +1486,13 @@
       }
     }
 
-    /** Met à jour la barre d'évaluation (score du point de vue des Blancs). */
+    /**
+     * Remplit la barre d'évaluation avec un score exprimé du point de vue des Blancs.
+     * @param {number} score - Score renvoyé par l'analyse pour le joueur qui réfléchit.
+     * @param {string} player - Couleur de ce joueur (`WHITE` ou `BLACK`).
+     * @returns {void} Rien : largeur, position et couleur de la barre sont modifiées.
+     * Concept JS : le score est inversé quand c'était au tour des Noirs.
+     */
     updateEvalBar(score, player) {
       if (!this.dom.evalFill || !this.dom.coachScore) return;
       const whiteScore = player === WHITE ? score : -score;
@@ -1246,7 +1504,12 @@
       this.dom.coachScore.textContent = (pawns >= 0 ? '+' : '') + pawns.toFixed(1);
     }
 
-    /** Met en évidence le meilleur coup trouvé par l'analyse. */
+    /**
+     * Surligne le meilleur coup de l'analyse, ou lance une analyse si elle manque.
+     * @returns {void} Rien : un message ou un surlignage est affiché.
+     * Concept JS : `boardKey` est comparé au plateau actuel pour vérifier que le
+     *   conseil est encore valable.
+     */
     showCoachHint() {
       if (!this.settings || !this.settings.coachMode) return;
       const analysis = this.coachAnalysis;
@@ -1265,6 +1528,12 @@
      * Intelligence artificielle (Web Worker)
      * ============================================================ */
 
+    /**
+     * Déclenche le tour de l'IA : prépare le calcul et envoie la demande au Worker.
+     * @returns {void} Rien : `aiThinking` passe à `true` pendant la réflexion.
+     * Concept JS : `postMessage` envoie une demande au Worker et `onmessage` en reçoit
+     *   la réponse plus tard. Un timer de sécurité (`aiTimeout`) prévoit le secours.
+     */
     maybeAITurn() {
       if (!this.gameActive || this.paused || this.engine.status.over || !this.engine.isAITurn()) return;
       if (this.aiThinking) return;
@@ -1298,6 +1567,7 @@
       this.updateStatus();
       this.updateControls();
 
+      // « settled » évite de traiter deux fois la même réponse de l'IA.
       let settled = false;
       const cleanup = () => {
         if (this.aiTimeout) {
@@ -1362,6 +1632,17 @@
       }
     }
 
+    /**
+     * Calcule le coup de l'IA dans la page même, quand le Worker n'est pas utilisable.
+     * @param {Array} board - Copie du plateau à analyser.
+     * @param {string} player - Couleur que l'IA doit jouer.
+     * @param {string} difficulty - Difficulté choisie.
+     * @param {number} timeMs - Temps de réflexion accordé, en millisecondes.
+     * @param {number} token - Jeton de la partie, pour ignorer une réponse tardive.
+     * @param {number} startedAt - Date du début de la recherche.
+     * @returns {void} Rien : le résultat est transmis à `handleAIResult`.
+     * Concept JS : `setTimeout` diffère le calcul de 40 ms pour laisser l'écran se rafraîchir.
+     */
     runAIFallback(board, player, difficulty, timeMs, token, startedAt) {
       if (!global.CheckersAI) {
         this.handleAIError('Le module IA local est introuvable.');
@@ -1394,6 +1675,12 @@
       }, 40);
     }
 
+    /**
+     * Met à jour le texte affiché pendant que l'IA réfléchit.
+     * @param {Object} progress - Informations : nœuds explorés, temps, profondeur.
+     * @returns {void} Rien : le texte de l'overlay de réflexion est remplacé.
+     * Concept JS : une suite de `if / else if` choisit un commentaire selon la profondeur.
+     */
     updateThinkingProgress(progress) {
       const nodes = this.formatNumber(progress.nodes || 0);
       const seconds = ((progress.timeMs || 0) / 1000).toFixed(1);
@@ -1406,6 +1693,14 @@
         comment + ' Profondeur ' + depth + ' · ' + nodes + ' positions · ' + seconds + ' s';
     }
 
+    /**
+     * Reçoit le coup calculé, le vérifie et le joue, ou prend un coup légal de secours.
+     * @param {Object} data - Résultat : coup, score, profondeur, nœuds, durée.
+     * @param {number} token - Jeton de la partie au moment de la demande.
+     * @returns {void} Rien : `executeMove` est appelée avec le coup retenu.
+     * Concept JS : si la partie est en pause, le résultat est mis dans `pendingAI`
+     *   pour être joué au retour.
+     */
     handleAIResult(data, token) {
       if (token !== this.gameToken || !this.gameActive) return;
       if (this.paused) {
@@ -1447,6 +1742,12 @@
       this.executeMove(move, { ai: true, stats: this.lastAIStats });
     }
 
+    /**
+     * Signale une erreur de l'IA et rend la main au joueur.
+     * @param {string} message - Texte de l'erreur à afficher.
+     * @returns {void} Rien : les boutons et le statut sont rétablis.
+     * Concept JS : on remet l'interface en état avant de montrer le message.
+     */
     handleAIError(message) {
       this.aiThinking = false;
       this.dom.thinkingOverlay.classList.add('hidden');
@@ -1456,7 +1757,13 @@
       this.toast('Erreur IA : ' + message, 'error', 5000);
     }
 
+    /**
+     * Annule toute recherche d'IA ou analyse en cours, ainsi que leurs timers.
+     * @returns {void} Rien : les jetons sont incrémentés pour invalider les réponses en vol.
+     * Concept JS : `terminate()` arrête un Worker ; `clearTimeout` annule un timer.
+     */
     cancelAI() {
+      // Incrémenter ce jeton rend sans effet toute réponse d'IA déjà en vol.
       this.aiToken++;
       this.aiRequestId++;
       if (this.aiTimeout) {
@@ -1483,12 +1790,23 @@
      * Chronomètre
      * ============================================================ */
 
+    /**
+     * Donne l'heure courante en millisecondes, avec `performance.now` si disponible.
+     * @returns {number} Nombre de millisecondes.
+     * Concept JS : `typeof` vérifie qu'une méthode existe avant de l'employer.
+     */
     now() {
       return global.performance && typeof global.performance.now === 'function'
         ? global.performance.now()
         : Date.now();
     }
 
+    /**
+     * Initialise les deux chronomètres ; zéro minute ou moins signifie « sans limite ».
+     * @param {number} minutes - Temps accordé à chaque joueur, en minutes.
+     * @returns {void} Rien : `this.clocks` est remplacé.
+     * Concept JS : `Infinity` représente un temps illimité.
+     */
     initClocks(minutes) {
       this.unlimited = !(Number(minutes) > 0);
       if (this.unlimited) {
@@ -1500,6 +1818,11 @@
       this.clockRunningSince = null;
     }
 
+    /**
+     * Décompte le temps du joueur courant et demande une sauvegarde toutes les 5 secondes.
+     * @returns {void} Rien : horloges et affichage sont mis à jour.
+     * Concept JS : `setInterval` (voir `init`) appelle cette méthode toutes les 250 ms.
+     */
     tickClock() {
       if (!this.gameActive || this.paused || this.engine.status.over) return;
       if (!this.clockRunningSince) {
@@ -1527,6 +1850,11 @@
       }
     }
 
+    /**
+     * Décompte le temps écoulé depuis le dernier battement, puis gèle le chronomètre.
+     * @returns {void} Rien : `clockRunningSince` repasse à `null`.
+     * Concept JS : `Math.max(0, ...)` garantit qu'on ne descend pas sous zéro.
+     */
     settleClock() {
       if (!this.clockRunningSince || this.unlimited) {
         this.clockRunningSince = null;
@@ -1540,6 +1868,12 @@
       this.updateClockUI();
     }
 
+    /**
+     * Termine la partie parce que le temps d'un joueur est écoulé.
+     * @param {string} player - Couleur du joueur hors temps.
+     * @returns {void} Rien : le statut du moteur est modifié puis `finishGame` est appelée.
+     * Concept JS : `timeoutHandled` empêche de conclure deux fois la même partie.
+     */
     handleTimeout(player) {
       if (!this.gameActive || this.engine.status.over || this.timeoutHandled) return;
       this.timeoutHandled = true;
@@ -1558,6 +1892,12 @@
      * Pause
      * ============================================================ */
 
+    /**
+     * Met en pause ou reprend la partie, en gelant puis en relançant horloge et IA.
+     * @param {boolean} force - État souhaité ; sans argument, inverse l'état actuel.
+     * @returns {void} Rien : l'overlay de pause est affiché ou masqué.
+     * Concept JS : `typeof force === 'boolean'` distingue un argument fourni d'un absent.
+     */
     togglePause(force) {
       if (!this.gameActive || this.busy || this.engine.status.over) return;
       const next = typeof force === 'boolean' ? force : !this.paused;
@@ -1588,6 +1928,12 @@
      * Fin de partie
      * ============================================================ */
 
+    /**
+     * Conclut la partie : enregistre le résultat et les points, affiche l'écran final
+     * et joue le son correspondant.
+     * @returns {void} Rien : la partie devient inactive et la sauvegarde auto est effacée.
+     * Concept JS : `gameOverShown` évite d'afficher deux fois la fin de partie.
+     */
     finishGame() {
       if (this.gameOverShown) return;
       this.gameOverShown = true;
@@ -1706,22 +2052,41 @@
      * Interface de jeu
      * ============================================================ */
 
+    /**
+     * Indique si le plateau doit être affiché à l'envers.
+     * @returns {boolean} `true` si le plateau est retourné, `false` sinon.
+     * Concept JS : une méthode peut simplement renvoyer un booléen.
+     */
     getFlipped() {
       if (this.engine.mode === 'ai' && this.engine.playerColor === BLACK) return true;
       return !!this.settings.boardFlipped;
     }
 
+    /**
+     * Donne la couleur des pièces placées en bas de l'écran.
+     * @returns {string} `WHITE` ou `BLACK`.
+     * Concept JS : cette méthode réutilise `getFlipped()`.
+     */
     getBottomColor() {
       return this.getFlipped() ? BLACK : WHITE;
     }
 
-    /** Met en évidence le dernier coup connu du moteur. */
+    /**
+     * Surligne le dernier coup connu d'après l'historique du moteur.
+     * @returns {void} Rien : le surlignage est demandé au renderer.
+     * Concept JS : `history[history.length - 1]` prend le dernier élément d'un tableau.
+     */
     syncLastMove() {
       if (!this.renderer) return;
       const last = this.engine.history[this.engine.history.length - 1];
       this.renderer.showLastMove(last ? last.move : null);
     }
 
+    /**
+     * Rafraîchit en une seule fois tous les éléments de l'écran de jeu.
+     * @returns {void} Rien : les méthodes `update...` sont appelées à la chaîne.
+     * Concept JS : `setTimeout` retarde l'analyse du coach pour ne pas ralentir l'affichage.
+     */
     updateAll() {
       this.syncPanels();
       this.updateHistory();
@@ -1734,6 +2099,11 @@
       }
     }
 
+    /**
+     * Remplit les deux panneaux joueurs : noms, pièces, captures et camp actif.
+     * @returns {void} Rien : textes, avatars et classes CSS sont actualisés.
+     * Concept JS : les mêmes instructions servent aux deux camps grâce à deux variables.
+     */
     syncPanels() {
       if (!this.gameActive && !this.engine.history.length) return;
       const bottomColor = this.getBottomColor();
@@ -1782,6 +2152,15 @@
         : '2 JOUEURS · LOCAL';
     }
 
+    /**
+     * Fabrique le petit texte qui dit à qui c'est au tour de jouer.
+     * @param {string} color - Camp auquel le libellé s'adresse.
+     * @param {string} current - Camp qui doit jouer.
+     * @param {string} mode - `ai` ou `pvp`.
+     * @param {string} human - Couleur du joueur humain.
+     * @returns {string} Par exemple `À VOUS`, `EN ATTENTE` ou `PAUSE`.
+     * Concept JS : une suite de `if` renvoie une seule valeur.
+     */
     turnLabel(color, current, mode, human) {
       if (this.engine.status.over) return 'TERMINÉ';
       if (this.paused) return 'PAUSE';
@@ -1790,6 +2169,11 @@
       return 'À VOUS';
     }
 
+    /**
+     * Met à jour la phrase d'état placée au-dessus du plateau.
+     * @returns {void} Rien : `gameStatus.textContent` est remplacé.
+     * Concept JS : le texte dépend de l'état du jeu (pause, réflexion, fin, tour).
+     */
     updateStatus() {
       let text;
       if (this.engine.status.over) {
@@ -1807,6 +2191,11 @@
       this.dom.gameStatus.textContent = text;
     }
 
+    /**
+     * Reconstruit la liste des coups joués, deux coups par ligne.
+     * @returns {void} Rien : la liste HTML est vidée puis remplie.
+     * Concept JS : la boucle avance de deux en deux avec `i += 2`.
+     */
     updateHistory() {
       const list = this.dom.historyList;
       if (!list) return;
@@ -1837,6 +2226,11 @@
       list.scrollTop = list.scrollHeight;
     }
 
+    /**
+     * Affiche les deux chronomètres et met en rouge ceux qui passent sous 30 secondes.
+     * @returns {void} Rien : textes et classe `low` sont ajustés.
+     * Concept JS : une classe CSS conditionnelle change l'apparence sans toucher au texte.
+     */
     updateClockUI() {
       const bottomColor = this.getBottomColor();
       const topColor = Rules.otherPlayer(bottomColor);
@@ -1846,6 +2240,11 @@
       this.dom.opponentTimer.classList.toggle('low', !this.unlimited && this.clocks[topColor] <= 30000);
     }
 
+    /**
+     * Affiche ou cache le panneau de statistiques de l'IA (profondeur, nœuds, durée).
+     * @returns {void} Rien : le panneau est rempli ou masqué.
+     * Concept JS : la classe `hidden` sert à masquer un élément.
+     */
     updateAIStats() {
       if (!this.dom.aiStatsPanel) return;
       if (this.engine.mode !== 'ai' || !this.lastAIStats) {
@@ -1858,6 +2257,11 @@
       this.dom.aiTime.textContent = ((this.lastAIStats.timeMs || 0) / 1000).toFixed(2) + ' s';
     }
 
+    /**
+     * Active ou désactive les boutons Annuler, Pause, Recommencer et Quitter.
+     * @returns {void} Rien : la propriété `disabled` des boutons est modifiée.
+     * Concept JS : `disabled = !canAct` inverse un booléen.
+     */
     updateControls() {
       const canAct = this.gameActive && !this.busy && !this.aiThinking && !this.engine.status.over;
       const humanMoved = this.engine.history.some((h) => h.player === this.engine.playerColor);
@@ -1873,6 +2277,11 @@
      * Accueil, statistiques et historique
      * ============================================================ */
 
+    /**
+     * Rafraîchit l'accueil : niveau, progression XP, victoires, défaites et nuls.
+     * @returns {void} Rien : les champs de l'accueil sont remplis.
+     * Concept JS : `Math.max` et `Math.min` bornent le pourcentage entre 0 et 100.
+     */
     updateHome() {
       if (!this.dom || !this.dom.playerLevel) return;
       this.updateProfileUI();
@@ -1889,6 +2298,11 @@
       this.dom.statBest.textContent = String(this.stats.bestScore);
     }
 
+    /**
+     * Affiche ou cache le bouton « Reprendre » selon la validité de la sauvegarde.
+     * @returns {void} Rien : la classe `hidden` est ajustée.
+     * Concept JS : `Array.isArray` vérifie qu'une donnée est bien un tableau.
+     */
     refreshResumeButton() {
       if (!this.dom || !this.dom.btnResume) return;
       const save = global.StorageManager.get(CFG.STORAGE.KEYS.SAVE, null);
@@ -1897,6 +2311,11 @@
       this.dom.btnResume.classList.toggle('hidden', !valid);
     }
 
+    /**
+     * Construit et ouvre l'historique des parties avec les statistiques globales.
+     * @returns {void} Rien : la modale d'historique est ouverte.
+     * Concept JS : un objet associe chaque résultat à son libellé et à sa couleur.
+     */
     openHistory() {
       this.stats = global.Statistics.load();
       const wins = this.stats.wins;
@@ -1977,6 +2396,11 @@
      * Puzzles tactiques
      * ============================================================ */
 
+    /**
+     * Ouvre les puzzles : crée le plateau dédié et charge le dernier puzzle ou celui du jour.
+     * @returns {void} Rien : la modale des puzzles est ouverte.
+     * Concept JS : le renderer est créé une seule fois puis réutilisé.
+     */
     openPuzzles() {
       const Puzzles = global.CheckersPuzzles;
       if (!Puzzles) return;
@@ -1993,6 +2417,11 @@
       this.openModal('modal-puzzles');
     }
 
+    /**
+     * Remplit la liste déroulante des puzzles, avec un symbole pour ceux déjà résolus.
+     * @returns {void} Rien : les options HTML sont reconstruites.
+     * Concept JS : `for ... of` parcourt tous les éléments d'un tableau.
+     */
     renderPuzzleOptions() {
       if (!this.dom.puzzleSelect || !global.CheckersPuzzles) return;
       const solved = (this.stats && this.stats.solvedPuzzles) || [];
@@ -2008,6 +2437,13 @@
       if (current) this.dom.puzzleSelect.value = current;
     }
 
+    /**
+     * Charge un puzzle : construit son plateau, retient son identifiant et remet l'état à zéro.
+     * @param {Object} puzzle - Puzzle à charger.
+     * @param {boolean} isDaily - Vrai pour le puzzle du jour ; change la description.
+     * @returns {void} Rien : `this.puzzleState` est remplacé.
+     * Concept JS : un objet `puzzleState` contient tout ce qui change pendant l'exercice.
+     */
     loadPuzzle(puzzle, isDaily) {
       if (!puzzle || !this.puzzleRenderer) return;
       this.puzzleState = {
@@ -2017,6 +2453,7 @@
         selected: null,
         solved: false
       };
+      // Le dernier puzzle ouvert est mémorisé pour être retrouvé ensuite.
       global.StorageManager.set(CFG.STORAGE.KEYS.PUZZLE, puzzle.id);
       this.puzzleRenderer.setFlipped(false);
       this.puzzleRenderer.render(this.puzzleState.board);
@@ -2030,11 +2467,25 @@
       this.setPuzzleFeedback('À vous de jouer : choisissez une pièce blanche.');
     }
 
+    /**
+     * Écrit un court message de retour sous le plateau de puzzle.
+     * @param {string} message - Texte à afficher.
+     * @param {string} kind - Type de message, par exemple `error` ou `success`.
+     * @returns {void} Rien : le texte et la classe CSS sont modifiés.
+     * Concept JS : on concatène des chaînes pour composer le nom de classe.
+     */
     setPuzzleFeedback(message, kind) {
       this.dom.puzzleFeedback.className = 'puzzle-feedback' + (kind ? ' ' + kind : '');
       this.dom.puzzleFeedback.textContent = message;
     }
 
+    /**
+     * Traite un clic sur le plateau et compare le coup joué à la solution attendue.
+     * @param {number} square - Numéro de la case cliquée.
+     * @returns {void} Rien : plateau, progression et message sont mis à jour.
+     * Concept JS : `find` cherche le premier coup qui correspond à la case visée.
+     *   Les captures sont triées avant comparaison pour accepter un autre ordre.
+     */
     onPuzzleSquareClick(square) {
       const state = this.puzzleState;
       if (!state || state.solved) return;
@@ -2105,6 +2556,11 @@
       this.dom.puzzleSelect.value = puzzle.id;
     }
 
+    /**
+     * Surligne le coup attendu à cette étape et affiche l'indice du puzzle.
+     * @returns {void} Rien : un surlignage et un message sont affichés.
+     * Concept JS : `filter` garde les coups qui partent de la même case et font les mêmes prises.
+     */
     showPuzzleHint() {
       const state = this.puzzleState;
       if (!state || state.solved) return;
@@ -2120,7 +2576,11 @@
         ' vers ' + Rules.squareNumber(move.to) + '.');
     }
 
-    /** Analyse la position avec l'IA locale et affiche le coup recommandé. */
+    /**
+     * Analyse le puzzle avec l'IA locale et montre le coup qu'elle recommande.
+     * @returns {void} Rien : un message compare ce coup à la solution attendue.
+     * Concept JS : ici l'IA tourne directement dans la page, sans Worker.
+     */
     analyzePuzzle() {
       const state = this.puzzleState;
       if (!state || state.solved || !global.CheckersAI) return;
@@ -2144,6 +2604,11 @@
         (match ? ' — c’est le coup attendu !' : ' — cherchez une autre prise.'));
     }
 
+    /**
+     * Passe au puzzle suivant et recharge la liste déroulante.
+     * @returns {void} Rien : le nouveau puzzle est affiché.
+     * Concept JS : le module des puzzles fournit l'identifiant suivant.
+     */
     nextPuzzle() {
       if (!this.puzzleState || !global.CheckersPuzzles) return;
       const next = global.CheckersPuzzles.next(this.puzzleState.puzzle.id);
@@ -2152,6 +2617,11 @@
       this.dom.puzzleSelect.value = next.id;
     }
 
+    /**
+     * Recommence le puzzle en cours depuis sa position initiale.
+     * @returns {void} Rien : l'état du puzzle est reconstruit.
+     * Concept JS : on réutilise l'objet puzzle gardé dans `this.puzzleState`.
+     */
     resetPuzzle() {
       if (this.puzzleState) {
         this.loadPuzzle(this.puzzleState.puzzle);
@@ -2164,6 +2634,12 @@
      * Replay des parties
      * ============================================================ */
 
+    /**
+     * Prépare le replay d'une partie en reconstruisant les plateaux successifs.
+     * @param {number} gameIndex - Position de la partie dans l'historique.
+     * @returns {void} Rien : la modale de replay s'ouvre si la partie contient des coups.
+     * Concept JS : un tableau de plateaux permet d'aller directement à n'importe quel coup.
+     */
     openGameReplay(gameIndex) {
       const games = (this.stats && this.stats.games) || [];
       const game = games[gameIndex];
@@ -2205,6 +2681,11 @@
       this.openModal('modal-replay');
     }
 
+    /**
+     * Construit la liste cliquable des coups du replay.
+     * @returns {void} Rien : les lignes sont ajoutées à la liste HTML.
+     * Concept JS : chaque ligne reçoit une callback pour sauter au coup choisi.
+     */
     buildReplayMoveList() {
       const data = this.replayData;
       if (!data) return;
@@ -2228,6 +2709,12 @@
       });
     }
 
+    /**
+     * Affiche le plateau correspondant à un numéro de coup du replay.
+     * @param {number} ply - Numéro du coup ; zéro est la position de départ.
+     * @returns {void} Rien : plateau, curseur et libellés sont mis à jour.
+     * Concept JS : `Math.min` et `Math.max` gardent la valeur dans les limites du replay.
+     */
     setReplayPly(ply) {
       const data = this.replayData;
       if (!data) return;
@@ -2249,12 +2736,23 @@
       });
     }
 
+    /**
+     * Avance ou recule d'un coup dans le replay et arrête la lecture automatique.
+     * @param {number} delta - Nombre de coups à franchir, par exemple -1 ou +1.
+     * @returns {void} Rien : le nouveau coup est affiché.
+     * Concept JS : `setReplayPly` se charge de borner la valeur calculée.
+     */
     stepReplay(delta) {
       if (!this.replayData) return;
       this.stopReplayPlay();
       this.setReplayPly(this.replayData.ply + delta);
     }
 
+    /**
+     * Démarre ou arrête la lecture automatique du replay.
+     * @returns {void} Rien : un timer est créé ou supprimé.
+     * Concept JS : `setInterval` exécute une fonction à intervalles réguliers.
+     */
     toggleReplayPlay() {
       if (this.replayTimer) {
         this.stopReplayPlay();
@@ -2263,6 +2761,7 @@
       if (!this.replayData || !this.replayData.moves.length) return;
       if (this.replayData.ply >= this.replayData.moves.length) this.setReplayPly(0);
       this.dom.btnReplayPlay.innerHTML = '<span class="icon i-pause"></span> PAUSE';
+      // Vitesse de Lecture prise dans le curseur de la modale de replay.
       this.replayTimer = global.setInterval(() => {
         if (!this.replayData || this.replayData.ply >= this.replayData.moves.length) {
           this.stopReplayPlay();
@@ -2272,6 +2771,11 @@
       }, Number(this.dom.replaySpeed.value) || 550);
     }
 
+    /**
+     * Arrête la lecture automatique et remet le bouton sur « LECTURE ».
+     * @returns {void} Rien : le timer est effacé.
+     * Concept JS : `clearInterval` annule un timer créé par `setInterval`.
+     */
     stopReplayPlay() {
       if (this.replayTimer) {
         global.clearInterval(this.replayTimer);
@@ -2286,6 +2790,11 @@
      * Paramètres
      * ============================================================ */
 
+    /**
+     * Remplit le panneau des réglages avec les valeurs enregistrées, puis l'ouvre.
+     * @returns {void} Rien : la modale des réglages est affichée.
+     * Concept JS : chaque champ HTML reçoit sa valeur depuis l'objet `settings`.
+     */
     openSettings() {
       this.settings = global.SettingsManager.load();
       this.dom.setTheme.value = this.settings.theme;
@@ -2319,6 +2828,11 @@
       this.openModal('modal-settings');
     }
 
+    /**
+     * Rétablit les réglages par défaut et rafraîchit l'affichage.
+     * @returns {void} Rien : un message confirme la remise à zéro.
+     * Concept JS : `SettingsManager.reset()` remplace l'objet des réglages.
+     */
     resetSettings() {
       global.SettingsManager.reset();
       this.settings = global.SettingsManager.settings;
@@ -2328,7 +2842,11 @@
       this.toast('Paramètres réinitialisés.', 'success');
     }
 
-    /** Télécharge les paramètres et les scores dans un fichier JSON. */
+    /**
+     * Prépare puis télécharge un fichier contenant réglages, scores et profils.
+     * @returns {void} Rien : un lien temporaire déclenche le téléchargement.
+     * Concept JS : `JSON.stringify` transforme un objet en texte et `Blob` crée un fichier en mémoire.
+     */
     exportData() {
       if (global.ProfileManager) global.ProfileManager.snapshot();
       const payload = {
@@ -2358,7 +2876,13 @@
       }
     }
 
-    /** Restaure les paramètres et les scores depuis un fichier JSON exporté. */
+    /**
+     * Lit un fichier précédemment exporté puis restaure réglages, scores et profils.
+     * @param {File} file - Fichier choisi par l'utilisateur.
+     * @returns {Promise<void>} Une Promise résolue quand l'import est terminé.
+     * Concept JS : `await file.text()` attend la lecture du fichier ; `JSON.parse`
+     *   transforme le texte reçu en objet utilisable.
+     */
     async importDataFile(file) {
       try {
         const payload = JSON.parse(await file.text());
@@ -2403,9 +2927,16 @@
      * Modales et confirmations
      * ============================================================ */
 
+    /**
+     * Rend une fenêtre modale visible et retient l'élément qui avait le focus.
+     * @param {string} id - Identifiant HTML de la modale.
+     * @returns {void} Rien : la classe `hidden` est retirée.
+     * Concept JS : `lastFocus` permettra de rendre le focus à l'élément d'origine.
+     */
     openModal(id) {
       const modal = global.document.getElementById(id);
       if (!modal) return;
+      // On retient l'élément actif pour lui rendre le focus à la fermeture.
       this.lastFocus = global.document.activeElement;
       modal.classList.remove('hidden');
       global.document.body.style.overflow = 'hidden';
@@ -2413,6 +2944,12 @@
       if (close) global.setTimeout(() => close.focus(), 40);
     }
 
+    /**
+     * Masque une modale, restaure le focus et répond « non » à une confirmation en cours.
+     * @param {string} id - Identifiant HTML de la modale.
+     * @returns {void} Rien : la classe `hidden` est ajoutée.
+     * Concept JS : fermer la confirmation sans cliquer revient à répondre faux.
+     */
     closeModal(id) {
       const modal = global.document.getElementById(id);
       if (!modal) return;
@@ -2431,11 +2968,23 @@
       }
     }
 
+    /**
+     * Ferme toutes les modales ouvertes ainsi que l'overlay de pause.
+     * @returns {void} Rien : l'écran redevient libre.
+     * Concept JS : `$$` donne un tableau que l'on parcourt avec `forEach`.
+     */
     closeAllModals() {
       $$('.modal-layer:not(.hidden)').forEach((modal) => this.closeModal(modal.id));
       this.dom.pauseOverlay.classList.add('hidden');
     }
 
+    /**
+     * Pose une question dans une modale et attend la réponse du joueur.
+     * @param {string} message - Question affichée.
+     * @param {string} okLabel - Texte du bouton de confirmation.
+     * @returns {Promise<boolean>} Une Promise qui vaut vrai ou faux selon la réponse.
+     * Concept JS : une Promise représente un résultat disponible plus tard.
+     */
     askConfirm(message, okLabel) {
       return new Promise((resolve) => {
         this.confirmResolve = resolve;
@@ -2445,6 +2994,12 @@
       });
     }
 
+    /**
+     * Enregistre la réponse à la modale de confirmation, puis la ferme.
+     * @param {boolean} value - `true` pour OK, `false` pour annuler.
+     * @returns {void} Rien : la Promise créée par `askConfirm` est résolue.
+     * Concept JS : résoudre une Promise réveille le code qui l'attendait avec `.then`.
+     */
     resolveConfirm(value) {
       const resolve = this.confirmResolve;
       this.confirmResolve = null;
@@ -2456,6 +3011,11 @@
      * Audio, plein écran, notifications
      * ============================================================ */
 
+    /**
+     * Active ou coupe les sons et met à jour les boutons correspondants.
+     * @returns {void} Rien : un court message est affiché.
+     * Concept JS : le réglage est enregistré pour la prochaine ouverture du jeu.
+     */
     toggleSound() {
       const enabled = !this.settings.soundsEnabled;
       global.SettingsManager.set('soundsEnabled', enabled);
@@ -2471,6 +3031,11 @@
       }
     }
 
+    /**
+     * Change l'icône et le libellé des boutons de son selon le réglage.
+     * @returns {void} Rien : les attributs HTML sont modifiés.
+     * Concept JS : `condition ? a : b` choisit une valeur parmi deux.
+     */
     updateSoundUI() {
       const enabled = this.settings.soundsEnabled;
       [this.dom.btnSoundHome, this.dom.btnSoundGame].forEach((btn) => {
@@ -2483,6 +3048,11 @@
       if (settingIcon) settingIcon.className = 'icon ' + (enabled ? 'i-volume' : 'i-volume-off');
     }
 
+    /**
+     * Active ou quitte le mode plein écran.
+     * @returns {Promise<void>} Une Promise résolue quand l'opération est terminée.
+     * Concept JS : `await` attend une action du navigateur et `try/catch` gère un refus.
+     */
     async toggleFullscreen() {
       try {
         if (!global.document.fullscreenElement) {
@@ -2496,7 +3066,12 @@
       }
     }
 
-    /** Notifie les succès nouvellement débloqués. */
+    /**
+     * Annonce successivement les succès nouvellement débloqués.
+     * @param {Array} badges - Liste des succès à annoncer.
+     * @returns {void} Rien : chaque message est affiché avec un léger délai.
+     * Concept JS : `setTimeout` planifie un affichage dans le futur.
+     */
     announceBadges(badges) {
       (badges || []).forEach((badge, index) => {
         global.setTimeout(() => {
@@ -2506,6 +3081,14 @@
       });
     }
 
+    /**
+     * Affiche une petite notification temporaire en haut de l'écran.
+     * @param {string} message - Texte du message.
+     * @param {string} type - Style : `info`, `success` ou `error`.
+     * @param {number} duration - Durée d'affichage en millisecondes.
+     * @returns {void} Rien : la notification se retire automatiquement.
+     * Concept JS : `duration || 2800` fournit une durée par défaut.
+     */
     toast(message, type, duration) {
       if (!this.dom || !this.dom.toasts) return;
       const el = global.document.createElement('div');
@@ -2525,11 +3108,17 @@
      * Sauvegarde / persistance
      * ============================================================ */
 
+    /**
+     * Sauvegarde la partie et le profil quand la page se ferme ou devient invisible.
+     * @returns {void} Rien : des écouteurs d'événements sont installés.
+     * Concept JS : l'événement `visibilitychange` prévient que l'onglet est masqué.
+     */
     bindPersistence() {
       const sync = () => {
         this.saveGame();
         if (global.ProfileManager) global.ProfileManager.snapshot();
       };
+      // Sauvegarde de sécurité avant que la page ne soit quittée ou masquée.
       global.addEventListener('pagehide', sync);
       global.addEventListener('beforeunload', sync);
       global.document.addEventListener('visibilitychange', () => {
@@ -2540,13 +3129,22 @@
       });
     }
 
-    /** Valide un payload de sauvegarde avant chargement. */
+    /**
+     * Vérifie qu'une sauvegarde contient bien un plateau de cent cases.
+     * @param {Object} save - Données à contrôler.
+     * @returns {boolean} `true` si la sauvegarde est utilisable, `false` sinon.
+     * Concept JS : `!!` force le résultat à être un booléen.
+     */
     isValidSave(save) {
       return !!(save && save.engine && Array.isArray(save.engine.board) &&
         save.engine.board.length === 100);
     }
 
-    /** Construit le payload de sauvegarde complet (auto-save et emplacements). */
+    /**
+     * Prépare l'objet complet à enregistrer : moteur, horloges, configuration et date.
+     * @returns {Object} L'objet de sauvegarde prêt à être stocké.
+     * Concept JS : `Date.now()` donne l'heure actuelle en millisecondes.
+     */
     buildSavePayload() {
       return {
         engine: this.engine.serialize(),
@@ -2560,12 +3158,21 @@
       };
     }
 
+    /**
+     * Enregistre la partie en cours si elle a réellement commencé.
+     * @returns {void} Rien : la clé de sauvegarde automatique est écrite.
+     * Concept JS : le stockage local garde la donnée même après fermeture de la page.
+     */
     saveGame() {
       if (!this.gameActive || this.engine.status.over || this.engine.history.length === 0) return;
       global.StorageManager.set(CFG.STORAGE.KEYS.SAVE, this.buildSavePayload());
     }
 
-    /** Copie la notation des coups de la partie en cours. */
+    /**
+     * Copie la notation des coups de la partie dans le presse-papiers.
+     * @returns {void} Rien : un message confirme la copie ou signale un échec.
+     * Concept JS : `.then(done).catch(fallback)` traite le succès ou l'échec d'une Promise.
+     */
     copyNotation() {
       if (!this.engine || this.engine.history.length === 0) {
         this.toast('Aucun coup à copier.', 'error');
@@ -2602,16 +3209,36 @@
 
     /* ---------- Sauvegardes manuelles et parties nommées ---------- */
 
+    /**
+     * Fabrique la clé de stockage d'un emplacement manuel.
+     * @param {number} slot - Numéro de l'emplacement, de 1 à 3.
+     * @returns {string} Clé utilisée dans le stockage local.
+     * Concept JS : on construit la clé en concaténant deux chaînes.
+     */
     saveSlotKey(slot) {
       return CFG.STORAGE.KEYS.SAVE + ':slot' + slot;
     }
 
+    /**
+     * Affiche la fenêtre des sauvegardes manuelles et des parties nommées.
+     * @returns {void} Rien : les deux listes sont reconstruites puis la modale s'ouvre.
+     * Concept JS : une méthode appelle deux autres méthodes pour préparer l'affichage.
+     */
     openSaves() {
       this.renderSaveSlots();
       this.renderNamedSaves();
       this.openModal('modal-saves');
     }
 
+    /**
+     * Fabrique un bouton de sauvegarde avec son icône, son texte et son action.
+     * @param {string} label - Texte du bouton.
+     * @param {string} icon - Classe de l'icône.
+     * @param {Function} handler - Callback appelée lors du clic.
+     * @param {boolean} disabled - Vrai pour désactiver le bouton.
+     * @returns {Element} Le bouton créé.
+     * Concept JS : une fonction peut être passée en argument puis attachée à un événement.
+     */
     makeSaveButton(label, icon, handler, disabled) {
       const btn = global.document.createElement('button');
       btn.type = 'button';
@@ -2622,6 +3249,12 @@
       return btn;
     }
 
+    /**
+     * Fabrique le petit texte qui résume une sauvegarde : mode, coups et date.
+     * @param {Object} save - Sauvegarde à résumer.
+     * @returns {string} Résumé lisible, ou `Vide` si la sauvegarde est invalide.
+     * Concept JS : `new Date(timestamp).toLocaleString()` rend la date compréhensible.
+     */
     saveMeta(save) {
       if (!this.isValidSave(save)) return 'Vide';
       const modeText = save.config && save.config.mode === 'pvp' ? '2 joueurs' : 'VS IA';
@@ -2630,6 +3263,11 @@
       return modeText + ' · ' + moves + ' coups · ' + when;
     }
 
+    /**
+     * Affiche les trois emplacements manuels avec Charger, Écraser et Supprimer.
+     * @returns {void} Rien : la liste HTML est reconstruite.
+     * Concept JS : les callbacks `async` attendent la confirmation avant d'agir.
+     */
     renderSaveSlots() {
       if (!this.dom.savesList) return;
       this.dom.savesList.innerHTML = '';
@@ -2670,6 +3308,11 @@
       }
     }
 
+    /**
+     * Affiche les parties nommées enregistrées dans le profil actif.
+     * @returns {void} Rien : la liste HTML est reconstruite.
+     * Concept JS : `for ... of` parcourt la liste fournie par le gestionnaire de profils.
+     */
     renderNamedSaves() {
       if (!this.dom.namedSavesList || !global.ProfileManager) return;
       this.dom.namedSavesList.innerHTML = '';
@@ -2703,6 +3346,11 @@
       }
     }
 
+    /**
+     * Enregistre la partie en cours sous le nom saisi par le joueur.
+     * @returns {void} Rien : un message confirme l'enregistrement.
+     * Concept JS : `.trim()` retire les espaces placés avant et après le texte saisi.
+     */
     saveNamedGame() {
       if (!global.ProfileManager) return;
       if (!this.gameActive || this.engine.status.over || this.engine.history.length === 0) {
@@ -2716,6 +3364,12 @@
       this.renderNamedSaves();
     }
 
+    /**
+     * Charge une partie nommée à partir de son identifiant.
+     * @param {string} id - Identifiant de la partie à charger.
+     * @returns {void} Rien : un message signale une partie vide ou invalide.
+     * Concept JS : `loadSavePayload` sert pour tous les types de sauvegarde.
+     */
     loadNamedGame(id) {
       const entry = global.ProfileManager && global.ProfileManager.getNamed(id);
       if (!entry || !this.loadSavePayload(entry.payload, { manual: true })) {
@@ -2723,6 +3377,12 @@
       }
     }
 
+    /**
+     * Écrit la partie en cours dans un emplacement manuel.
+     * @param {number} slot - Numéro de l'emplacement.
+     * @returns {void} Rien : la liste est rafraîchie si la fenêtre est ouverte.
+     * Concept JS : la clé est construite par `saveSlotKey`.
+     */
     saveToSlot(slot) {
       if (!this.gameActive || this.engine.status.over || this.engine.history.length === 0) {
         this.toast('Aucune partie en cours à enregistrer.', 'error');
@@ -2733,12 +3393,24 @@
       if (this.dom.modalSaves && !this.dom.modalSaves.classList.contains('hidden')) this.renderSaveSlots();
     }
 
+    /**
+     * Supprime le contenu d'un emplacement de sauvegarde manuelle.
+     * @param {number} slot - Numéro de l'emplacement.
+     * @returns {void} Rien : la liste est rafraîchie.
+     * Concept JS : `StorageManager.remove` efface la donnée stockée.
+     */
     deleteSlot(slot) {
       global.StorageManager.remove(this.saveSlotKey(slot));
       this.toast('Emplacement ' + slot + ' supprimé.', 'info');
       this.renderSaveSlots();
     }
 
+    /**
+     * Charge la sauvegarde présente dans un emplacement manuel.
+     * @param {number} slot - Numéro de l'emplacement.
+     * @returns {void} Rien : un message signale un emplacement vide ou invalide.
+     * Concept JS : la clé et son contenu sont transmis ensemble à `loadSavePayload`.
+     */
     loadFromSlot(slot) {
       const key = this.saveSlotKey(slot);
       const save = global.StorageManager.get(key, null);
@@ -2749,12 +3421,22 @@
 
     /* ---------- Profils de joueurs ---------- */
 
+    /**
+     * Ouvre la fenêtre de gestion des profils joueurs.
+     * @returns {void} Rien : la liste est reconstruite avant l'ouverture.
+     * Concept JS : chaque profil possède un identifiant unique.
+     */
     openProfiles() {
       if (!global.ProfileManager) return;
       this.renderProfiles();
       this.openModal('modal-profiles');
     }
 
+    /**
+     * Affiche les profils avec leur niveau, leurs victoires et leurs boutons d'action.
+     * @returns {void} Rien : la liste HTML est reconstruite.
+     * Concept JS : la classe `is-active` distingue le profil courant.
+     */
     renderProfiles() {
       if (!this.dom.profilesList || !global.ProfileManager) return;
       this.dom.profilesList.innerHTML = '';
@@ -2801,7 +3483,13 @@
       }
     }
 
-    /** Recharge l'interface après une bascule de profil. */
+    /**
+     * Recharge réglages et scores après l'activation d'un autre profil.
+     * @param {Object} profile - Profil devenu actif, utilisé pour le message.
+     * @param {string} message - Message à afficher, ou absent pour le texte par défaut.
+     * @returns {void} Rien : l'application revient à l'accueil.
+     * Concept JS : `message || '...'` fournit une valeur de remplacement.
+     */
     applyActiveProfile(profile, message) {
       this.cancelAI();
       this.closeAllModals();
@@ -2825,6 +3513,11 @@
       this.toast(message || ('Profil « ' + profile.name + ' » activé.'), 'success');
     }
 
+    /**
+     * Crée un nouveau profil avec le nom saisi, puis l'active.
+     * @returns {void} Rien : un message confirme la création ou demande un nom.
+     * Concept JS : la méthode s'arrête immédiatement si le texte est vide.
+     */
     createProfile() {
       if (!global.ProfileManager) return;
       const name = (this.dom.newProfileName && this.dom.newProfileName.value || '').trim();
@@ -2837,6 +3530,12 @@
       this.applyActiveProfile(profile, 'Profil « ' + profile.name + ' » créé.');
     }
 
+    /**
+     * Renomme un profil et actualise son affichage s'il est actif.
+     * @param {string} id - Identifiant du profil à renommer.
+     * @returns {void} Rien : un message confirme l'opération.
+     * Concept JS : `active().id` indique si le profil concerné est le profil courant.
+     */
     renameProfile(id) {
       if (!global.ProfileManager) return;
       const name = (this.dom.newProfileName && this.dom.newProfileName.value || '').trim();
@@ -2854,6 +3553,12 @@
       this.toast('Profil renommé en « ' + name + ' ».', 'success');
     }
 
+    /**
+     * Active un profil existant puis recharge l'interface.
+     * @param {string} id - Identifiant du profil.
+     * @returns {void} Rien : `applyActiveProfile` termine le travail.
+     * Concept JS : le gestionnaire de profils s'occupe de la persistance.
+     */
     selectProfile(id) {
       if (!global.ProfileManager) return;
       const profile = global.ProfileManager.select(id);
@@ -2861,6 +3566,12 @@
       this.applyActiveProfile(profile);
     }
 
+    /**
+     * Supprime un profil, sauf s'il ne reste que celui-là.
+     * @param {string} id - Identifiant du profil à supprimer.
+     * @returns {void} Rien : un message d'erreur s'affiche si la suppression est refusée.
+     * Concept JS : on compare la longueur du tableau des profils à un.
+     */
     deleteProfile(id) {
       if (!global.ProfileManager) return;
       const wasActive = id === global.ProfileManager.active().id;
@@ -2876,6 +3587,11 @@
      * Service Worker / PWA
      * ============================================================ */
 
+    /**
+     * Active le Service Worker pour le mode hors ligne et détecte les mises à jour.
+     * @returns {void} Rien : des messages informent l'utilisateur selon le cas.
+     * Concept JS : `.then` traite le succès d'une Promise et `.catch` son échec.
+     */
     registerServiceWorker() {
       if (!('serviceWorker' in global.navigator)) return;
       if (!/^https?:$/.test(global.location.protocol)) return;
@@ -2911,6 +3627,12 @@
      * Utilitaires
      * ============================================================ */
 
+    /**
+     * Transforme un temps en millisecondes en texte lisible `mm:ss`.
+     * @param {number} ms - Millisecondes restantes.
+     * @returns {string} Par exemple `01:35`, ou le symbole infini si le temps est illimité.
+     * Concept JS : `padStart` ajoute un zéro devant les nombres d'un seul chiffre.
+     */
     formatClock(ms) {
       if (!Number.isFinite(ms)) return '∞';
       const total = Math.max(0, Math.ceil(ms / 1000));
@@ -2919,6 +3641,12 @@
       return String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
     }
 
+    /**
+     * Transforme une durée en secondes en texte `minutes:secondes`.
+     * @param {number} seconds - Durée en secondes.
+     * @returns {string} Par exemple `3:07`.
+     * Concept JS : le reste d'une division (`%`) donne les secondes.
+     */
     formatDuration(seconds) {
       const total = Math.max(0, Math.floor(seconds || 0));
       const minutes = Math.floor(total / 60);
@@ -2926,6 +3654,12 @@
       return minutes + ':' + String(rest).padStart(2, '0');
     }
 
+    /**
+     * Formate un nombre avec les séparateurs de milliers français.
+     * @param {number} value - Nombre à rendre lisible.
+     * @returns {string} Nombre formaté, ou simple chaîne si le formatage échoue.
+     * Concept JS : `try/catch` évite de faire planter l'application.
+     */
     formatNumber(value) {
       try {
         return Number(value || 0).toLocaleString('fr-FR');
@@ -2934,6 +3668,12 @@
       }
     }
 
+    /**
+     * Transforme un horodatage en date courte suivie de l'heure.
+     * @param {number} timestamp - Horodatage en millisecondes.
+     * @returns {string} Date lisible, ou un tiret si elle manque.
+     * Concept JS : `new Date(...)` transforme un nombre en objet date.
+     */
     formatDate(timestamp) {
       if (!timestamp) return '—';
       try {
@@ -2950,12 +3690,18 @@
     }
   }
 
+  /**
+   * Fabrique l'application, la rend accessible puis lance son initialisation.
+   * @returns {void} Rien : l'application est prête à fonctionner.
+   * Concept JS : `new CheckersApp()` crée un objet à partir de la classe.
+   */
   function boot() {
     const app = new CheckersApp();
     global.checkersApp = app;
     app.init();
   }
 
+  // Si la page charge encore, on attend ; sinon on démarre tout de suite.
   if (global.document.readyState === 'loading') {
     global.document.addEventListener('DOMContentLoaded', boot, { once: true });
   } else {

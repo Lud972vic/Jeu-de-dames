@@ -9,27 +9,65 @@
  *  - orientation du plateau (Blancs ou Noirs en bas)
  *
  * Le renderer ne contient AUCUNE règle du jeu : il affiche l'état fourni.
+ *
+ * POUR UN DÉBUTANT — Tout le fichier est enveloppé dans une « IIFE »
+ * (fonction immédiatement appelée) : `(function (global) { ... })(...)`.
+ * Elle crée un espace privé pour nos variables, puis expose une seule classe
+ * sur l'objet global pour que le reste du jeu puisse s'en servir. Le mot-clé
+ * `this` désigne l'instance courante : l'objet qui mémorise le plateau, les
+ * pièces et l'état de la sélection. Les cases et pièces sont des éléments du
+ * DOM (la page web) fabriqués avec `document.createElement`. Les 100 cases
+ * sont rangées dans un tableau (`squareEls`, index 0 à 99) et les pièces dans
+ * une `Map` (un tableau associatif qui associe un numéro de case à son élément
+ * visuel). Chaque case occupant 10 % du plateau, on positionne les pièces en
+ * pourcentage (`left`/`top`) plutôt qu'en pixels : le plateau s'adapte ainsi à
+ * toutes les tailles d'écran. `getBoundingClientRect()` sert uniquement à
+ * convertir une case en pixels pour y placer les effets spéciaux. Enfin,
+ * `async`/`await` permet d'attendre la fin d'une animation avant de passer à
+ * l'étape suivante d'un coup, sans figer le navigateur.
  */
 (function (global) {
   'use strict';
 
+  // CFG = réglages généraux du jeu ; Rules = outils de calcul des cases.
   const CFG = global.GameConfig;
   const Rules = global.CheckersRules;
 
+  /**
+   * Classe du renderer : elle dessine le plateau et les pièces, mais ne
+   * connaît pas les règles du jeu (c'est une classe « vue »).
+   */
   class BoardRenderer {
+    /**
+     * Prépare le renderer et construit les 100 cases du plateau.
+     * @param {HTMLElement} boardEl élément DOM qui contient les cases
+     * @param {HTMLElement} piecesEl élément DOM (calque) qui contient les pièces
+     * @param {object} [options] options facultatives de rendu
+     * @returns {BoardRenderer} l'objet nouvellement créé (constructeur)
+     * Concept : le constructeur est la fonction appelée par `new`. `this`
+     * désigne le nouvel objet dans lequel on range l'état du rendu.
+     */
     constructor(boardEl, piecesEl, options) {
       this.boardEl = boardEl;
       this.piecesEl = piecesEl;
       this.options = options || {};
-      this.flipped = false;
+      this.flipped = false;             // true = plateau orienté pour les Noirs
+      // Map : comme un tableau, mais on accède avec une clé (numéro de case).
       this.pieceEls = new Map(); // square -> element
-      this.squareEls = [];
-      this.selected = null;
-      this.hints = [];
-      this.onSquareClick = null;
+      this.squareEls = [];              // tableau des 100 cases, index 0..99
+      this.selected = null;             // case de la pièce sélectionnée
+      this.hints = [];                  // cases en surbrillance (coups possibles)
+      this.onSquareClick = null;        // fonction à appeler lors d'un clic
       this._buildSquares();
     }
 
+    /**
+     * Crée les 100 cases du plateau et installe les écouteurs de clic/clavier.
+     * @returns {void}
+     * Concept : `innerHTML = ''` vide le contenu avant de reconstruire.
+     * `addEventListener` demande au navigateur de nous prévenir quand un
+     * événement survient ; la fonction passée est alors appelée (callback).
+     */
     _buildSquares() {
       this.boardEl.innerHTML = '';
       this.squareEls = [];
@@ -47,6 +85,14 @@
       }
       // Le calque des pièces est un frère du plateau (et non un enfant) :
       // les deux zones doivent donc transmettre les clics au contrôleur.
+      /**
+       * Callback de clic : retrouve la case cliquée, même si c'est une pièce.
+       * @param {Event} event événement de clic fourni par le navigateur
+       * @returns {void}
+       * Concept : `=>` définit une fonction courte (fonction fléchée).
+       * `.closest()` remonte dans le DOM pour trouver l'élément parent qui
+       * porte la classe demandée.
+       */
       const handleClick = (event) => {
         const squareEl = event.target.closest('.square');
         const pieceEl = event.target.closest('.piece');
@@ -62,6 +108,13 @@
 
       // Navigation clavier : Entrée/Espace joue la case, flèches se déplacent
       // de case jouable en case jouable (les cases claires sont ignorées).
+      /**
+       * Callback clavier : Entrée/Espace valide, les flèches déplacent le focus.
+       * @param {KeyboardEvent} event événement touche fourni par le navigateur
+       * @returns {void}
+       * Concept : `event.preventDefault()` annule l'action par défaut du
+       * navigateur (par exemple faire défiler la page avec la barre d'espace).
+       */
       const handleKey = (event) => {
         const squareEl = event.target.closest('.square');
         if (!squareEl) return;
@@ -91,12 +144,17 @@
       };
       this.boardEl.addEventListener('keydown', handleKey);
 
-      this._coordEls = [];
-      this._lastMove = null;
+      this._coordEls = [];   // étiquettes a-j / 1-10 posées sur les bords
+      this._lastMove = null; // dernier coup joué (départ et arrivée)
       this._updateCoordinates();
     }
 
-    /** Repères a–j / 1–10 placés sur les bords visuels du plateau. */
+    /**
+     * Repères a–j / 1–10 placés sur les bords visuels du plateau.
+     * @returns {void}
+     * Concept : on retire d'abord les anciennes étiquettes avec `remove()`,
+     * puis on les recrée : il n'y a ainsi jamais de doublon à l'écran.
+     */
     _updateCoordinates() {
       if (!this._coordEls) this._coordEls = [];
       this._coordEls.forEach((el) => el.remove());
@@ -123,7 +181,13 @@
       }
     }
 
-    /** Met en évidence le dernier coup joué (départ et arrivée). */
+    /**
+     * Met en évidence le dernier coup joué (départ et arrivée).
+     * @param {object} move coup contenant `from` (départ) et `to` (arrivée)
+     * @returns {void}
+     * Concept : `classList.add()` ajoute une classe CSS, ce qui change
+     * l'apparence sans toucher à la structure de la page.
+     */
     showLastMove(move) {
       this.clearLastMove();
       if (!move) return;
@@ -136,6 +200,12 @@
       this._lastMove = move;
     }
 
+    /**
+     * Efface la mise en évidence du dernier coup.
+     * @returns {void}
+     * Concept : `for...of` parcourt un tableau, tandis que `.values()`
+     * parcourt les valeurs d'une `Map`. On retire les classes une à une.
+     */
     clearLastMove() {
       for (const el of this.squareEls) {
         el.classList.remove('last-move-from', 'last-move-to');
@@ -144,19 +214,39 @@
       this._lastMove = null;
     }
 
-    /** Position en pourcentage (left/top) pour une case, selon l'orientation. */
+    /**
+     * Position en pourcentage (left/top) pour une case, selon l'orientation.
+     * @param {number} square numéro de case (0..99)
+     * @returns {{left: number, top: number}} position en pourcentage
+     * Concept : 10 cases × 10 % = 100 %. Si le plateau est retourné, on
+     * soustrait l'index à 9 pour inverser lignes et colonnes.
+     */
     _pos(square) {
       let r = Rules.rowOf(square), c = Rules.colOf(square);
       if (this.flipped) { r = 9 - r; c = 9 - c; }
       return { left: c * 10, top: r * 10 };
     }
 
+    /**
+     * Retourne le plateau (Blancs ou Noirs en bas) et redessine l'état courant.
+     * @param {boolean} flipped true pour inverser l'orientation
+     * @returns {void}
+     * Concept : `!!valeur` convertit n'importe quelle valeur en booléen
+     * (vrai ou faux). On réutilise le dernier plateau mémorisé dans `_lastBoard`.
+     */
     setFlipped(flipped) {
       this.flipped = !!flipped;
       this._updateCoordinates();
       this.render(this._lastBoard || new Array(100).fill(0));
     }
 
+    /**
+     * Traduit un code de pièce en classes CSS (couleur et type).
+     * @param {number} piece code de la pièce (pion ou dame, blanc ou noir)
+     * @returns {string} classes CSS, ou chaîne vide si le code est inconnu
+     * Concept : une suite de `if` teste chaque cas ; le premier qui convient
+     * renvoie tout de suite une valeur grâce à `return`.
+     */
     _pieceClass(piece) {
       if (piece === CFG.WHITE_MAN) return 'piece-white man';
       if (piece === CFG.WHITE_KING) return 'piece-white king';
@@ -165,6 +255,14 @@
       return '';
     }
 
+    /**
+     * Fabrique l'élément DOM d'une pièce et le place sur sa case.
+     * @param {number} square numéro de case (0..99)
+     * @param {number} piece code de la pièce à afficher
+     * @returns {HTMLElement} nouvel élément (pas encore ajouté à la page)
+     * Concept : `element.innerHTML` définit le contenu HTML interne avec des
+     * `<span>` ; une dame ajoute un second disque et une couronne.
+     */
     _createPieceEl(square, piece) {
       const el = global.document.createElement('div');
       el.className = 'piece ' + this._pieceClass(piece);
@@ -181,7 +279,13 @@
       return el;
     }
 
-    /** Rendu complet du plateau et des pièces. */
+    /**
+     * Rendu complet du plateau et des pièces.
+     * @param {number[]} board tableau de 100 codes décrivant chaque case
+     * @returns {void}
+     * Concept : `slice()` copie le tableau pour mémoriser l'état sans que le
+     * reste du jeu puisse le modifier ensuite. On vide puis on recrée les pièces.
+     */
     render(board) {
       this._lastBoard = board.slice();
       this.piecesEl.innerHTML = '';
@@ -196,7 +300,15 @@
       this.clearHighlights();
     }
 
-    /** Sélection d'une pièce + affichage des coups possibles. */
+    /**
+     * Sélection d'une pièce + affichage des coups possibles.
+     * @param {number} square case de la pièce sélectionnée
+     * @param {object[]} moves liste des coups autorisés
+     * @param {boolean} showHints true pour afficher les cases cibles
+     * @returns {void}
+     * Concept : un `Set` est une collection sans doublons ; il sert ici à ne
+     * mettre en évidence qu'une seule fois chaque case cible.
+     */
     showMoves(square, moves, showHints) {
       this.clearHighlights();
       this.selected = square;
@@ -222,6 +334,10 @@
       }
     }
 
+    /**
+     * Retire toutes les surbrillances (sélection, cibles, pièces menacées).
+     * @returns {void}
+     */
     clearHighlights() {
       this.selected = null;
       this.hints = [];
@@ -233,19 +349,31 @@
       }
     }
 
-    /** Désactive visuellement l'interaction (tour de l'IA). */
+    /**
+     * Désactive visuellement l'interaction (tour de l'IA).
+     * @param {boolean} interactive true si le joueur peut cliquer
+     * @returns {void}
+     * Concept : `classList.toggle(nom, condition)` ajoute la classe si la
+     * condition est vraie et la retire sinon. Ici la condition est inversée.
+     */
     setInteractive(interactive) {
       this.piecesEl.classList.toggle('not-interactive', !interactive);
     }
 
     /**
      * Anime un coup (déplacement + captures + promotion).
-     * @param {object} move coup issu du moteur
-     * @param {object} opts { speed, onCapture(square, index, total) }
+     * @param {object} move coup issu du moteur (from, to, path, captures, promotes)
+     * @param {object} [opts] réglages : `speed` et callback `onCapture`
+     * @returns {Promise<void>} promesse résolue quand l'animation est terminée
+     * Concept : une fonction `async` renvoie toujours une Promise. `await`
+     * met en pause cette fonction jusqu'à la fin de `sleep()`, sans bloquer
+     * le navigateur. Le coup avance étape par étape le long de `path` (utile
+     * pour les rafles), chaque étape durant au moins 60 millisecondes.
      */
     async animateMove(move, opts) {
       opts = opts || {};
       const speed = opts.speed || 1;
+      // Durée d'une étape : réglage du jeu divisé par la vitesse, jamais < 60 ms.
       const stepMs = Math.max(60, (CFG.ANIMATION.MOVE_MS / speed));
       const el = this.pieceEls.get(move.from);
       if (!el) return;
@@ -269,6 +397,7 @@
           if (capEl) {
             capEl.classList.add('captured');
             this.pieceEls.delete(capturedSquare);
+            // On laisse l'animation CSS se terminer avant de retirer l'élément.
             global.setTimeout(() => capEl.remove(), 380);
           }
           if (opts.onCapture) {
@@ -300,12 +429,19 @@
           }, 130 / speed);
         }
 
+        // L'éclat dure 900 ms, accéléré quand la vitesse dépasse 1.
         global.setTimeout(() => el.classList.remove('promoting'), 900 / speed);
         await global.Animations.sleep(CFG.ANIMATION.PROMOTE_MS / speed);
       }
     }
 
-    /** Position pixel (centre) d'une case relative au plateau. */
+    /**
+     * Position pixel (centre) d'une case relative au plateau.
+     * @param {number} square numéro de case (0..99)
+     * @returns {{x: number, y: number}} coordonnées en pixels
+     * Concept : `getBoundingClientRect()` donne la taille réelle du plateau à
+     * l'écran. On ajoute 5 % (la moitié d'une case) pour tomber au centre.
+     */
     squareCenter(square) {
       const rect = this.boardEl.getBoundingClientRect();
       const pos = this._pos(square);
@@ -315,7 +451,14 @@
       };
     }
 
-    /** Force le rendu d'une pièce en dame (promotion immédiate sans animation). */
+    /**
+     * Force le rendu d'une pièce en dame (promotion immédiate sans animation).
+     * @param {number} square numéro de case (0..99)
+     * @param {number} piece code de la pièce (0 = case vide)
+     * @returns {void}
+     * Concept : on remplace l'ancien élément par un nouveau. C'est plus simple
+     * que de modifier son HTML en place et cela évite les états intermédiaires.
+     */
     updatePiece(square, piece) {
       const old = this.pieceEls.get(square);
       if (old) old.remove();
@@ -326,6 +469,8 @@
     }
   }
 
+  // On expose la classe sur le global (la fenêtre du navigateur, ou `global`
+  // dans Node). Le second test permet aussi un usage avec `require()` dans Node.
   global.BoardRenderer = BoardRenderer;
   if (typeof module !== 'undefined' && module.exports) module.exports = BoardRenderer;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

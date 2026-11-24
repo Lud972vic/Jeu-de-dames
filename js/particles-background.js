@@ -4,39 +4,74 @@
  * Effet « particles.js » en Canvas 2D natif : points flottants reliés entre
  * eux par des lignes, réaction au curseur, palette adaptée au thème courant.
  * Aucune bibliothèque externe, aucune ressource réseau (100 % offline).
+ *
+ * POUR UN DÉBUTANT — Le module est une IIFE (fonction appelée immédiatement)
+ * qui expose un objet unique, `ParticlesBackground`. À l'intérieur, `this`
+ * désigne cet objet : il contient le canvas, le contexte de dessin 2D, le
+ * tableau des particules et les réglages. Une particule est un simple objet
+ * JavaScript avec une position (x, y), une vitesse (vx, vy), une couleur et
+ * une durée de vie. Le dessin se fait avec l'API Canvas 2D (`beginPath`,
+ * `moveTo`, `lineTo`, `arc`, `stroke`, `fill`) sur un fond effacé à chaque
+ * image par `clearRect`. `devicePixelRatio` (plafonné à 2 ici) ajuste la
+ * résolution interne du canvas pour les écrans haute densité. La boucle
+ * d'animation utilise `requestAnimationFrame`, et `cancelAnimationFrame`
+ * l'arrête quand l'effet est désactivé ou que l'onglet est masqué. Le module
+ * écoute plusieurs événements du navigateur : `resize`, `pointermove` (souris/
+ * doigt), `pointerdown` (clic dans le vide), `blur` et `visibilitychange`.
+ * Un `MutationObserver` surveille les attributs du body pour rafraîchir la
+ * palette quand le thème change, et `getComputedStyle` lit les variables CSS.
+ * Les couleurs sont enregistrées comme objets `{r, g, b}` pour pouvoir
+ * construire des chaînes `rgba(...)` avec une transparence calculée.
  */
 (function (global) {
   'use strict';
 
+  /**
+   * Paliers de densité : nombre de particules selon la taille de l'écran.
+   * - divisor : on divise (largeur × hauteur) par ce nombre pour obtenir le
+   *   nombre de points (plus il est petit, plus il y en a) ;
+   * - min / max : bornes du nombre de particules ;
+   * - link : distance maximale (en pixels) pour relier deux points ;
+   * - speed : multiplicateur de vitesse du palier.
+   */
   const DENSITY_PRESETS = {
     low:    { divisor: 34000, min: 16, max: 38,  link: 110, speed: 0.65 },
     normal: { divisor: 19000, min: 24, max: 85,  link: 140, speed: 1 },
     high:   { divisor: 12000, min: 40, max: 120, link: 155, speed: 1.3 }
   };
 
+  /**
+   * Objet singleton qui gère le fond animé (une seule instance pour la page).
+   */
   const ParticlesBackground = {
-    canvas: null,
-    ctx: null,
-    particles: [],
-    width: 0,
-    height: 0,
-    dpr: 1,
-    enabled: true,
-    animated: true,
-    running: false,
-    rafId: 0,
-    lastTime: 0,
-    linkDistance: 140,
-    pointerDistance: 165,
-    pointer: { x: 0, y: 0, active: false },
-    rings: [],
-    density: 'normal',
-    speedFactor: 1,
-    palette: [],
-    lightMode: false,
-    observer: null,
+    canvas: null,        // élément <canvas> du fond
+    ctx: null,           // contexte de dessin 2D
+    particles: [],       // tableau des points affichés
+    width: 0,            // largeur logique (CSS) de la fenêtre
+    height: 0,           // hauteur logique (CSS) de la fenêtre
+    dpr: 1,              // ratio de pixels de l'écran, plafonné à 2
+    enabled: true,       // réglage utilisateur : effet activé
+    animated: true,      // true si le mouvement est autorisé
+    running: false,      // true si la boucle d'animation tourne
+    rafId: 0,            // identifiant renvoyé par requestAnimationFrame
+    lastTime: 0,         // horodatage de l'image précédente
+    linkDistance: 140,   // distance max pour tracer un lien entre 2 points
+    pointerDistance: 165,// distance max pour le lien avec le curseur
+    pointer: { x: 0, y: 0, active: false }, // position du curseur
+    rings: [],           // ondes de choc déclenchées au clic
+    density: 'normal',   // palier courant (low / normal / high)
+    speedFactor: 1,      // vitesse du palier courant
+    palette: [],         // couleurs lues dans les variables CSS
+    lightMode: false,    // true en mode clair (liens plus discrets)
+    observer: null,      // MutationObserver qui surveille le thème
 
-    /** Initialise le canvas et synchronise l'effet avec les paramètres. */
+    /**
+     * Initialise le canvas et synchronise l'effet avec les paramètres.
+     * @param {HTMLCanvasElement} canvas élément <canvas> à utiliser
+     * @returns {void}
+     * Concept : on vérifie d'abord que l'élément sait dessiner, puis on
+     * enchaîne les étapes : densité, couleurs, taille, événements, sync.
+     */
     init(canvas) {
       if (!canvas || typeof canvas.getContext !== 'function') return;
       this.canvas = canvas;
@@ -48,6 +83,13 @@
       this.sync();
     },
 
+    /**
+     * Installe les écouteurs d'événements du navigateur.
+     * @returns {void}
+     * Concept : `addEventListener` associe un événement à une fonction.
+     * L'option `{ passive: true }` indique qu'on n'annulera pas le comportement
+     * par défaut, ce qui aide le navigateur à rester fluide.
+     */
     _bindEvents() {
       global.addEventListener('resize', () => this._resize());
 
@@ -84,11 +126,19 @@
       }
     },
 
-    /** Lit la palette CSS courante (variables de thème) et la convertit en RGB. */
+    /**
+     * Lit la palette CSS courante (variables de thème) et la convertit en RGB.
+     * @returns {void}
+     * Concept : `getComputedStyle` donne les valeurs CSS calculées ; on lit
+     * les variables avec `getPropertyValue`. La petite fonction `read`
+     * utilise une valeur de repli si la variable n'existe pas. Les particules
+     * déjà créées sont recolorées pour suivre le nouveau thème.
+     */
     _refreshPalette() {
       if (!global.document || !global.getComputedStyle) return;
       const body = global.document.body || global.document.documentElement;
       const style = global.getComputedStyle(body);
+      /** Lit une variable CSS ou renvoie une couleur de secours. */
       const read = (name, fallback) => {
         const value = (style.getPropertyValue(name) || '').trim();
         return value || fallback;
@@ -107,6 +157,13 @@
       if (this.ctx && this.particles.length && !this.running) this._draw();
     },
 
+    /**
+     * Convertit une couleur CSS hexadécimale ou rgb(...) en objet {r, g, b}.
+     * @param {string} value valeur CSS à convertir
+     * @returns {?{r: number, g: number, b: number}} couleur RGB, ou null
+     * Concept : une expression régulière (`/.../`) reconnaît la forme de la
+     * chaîne. `parseInt(..., 16)` lit un nombre en base 16 (hexadécimal).
+     */
     _toRgb(value) {
       if (!value) return null;
       const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(value);
@@ -124,6 +181,13 @@
       return null;
     },
 
+    /**
+     * Ajuste la taille du canvas et reconstruit les particules si besoin.
+     * @returns {void}
+     * Concept : la taille CSS et la taille pixels sont distinctes ; on
+     * multiplie par `dpr` pour la seconde. `Math.max(1, ...)` évite un canvas
+     * de taille nulle.
+     */
     _resize() {
       if (!this.canvas) return;
       this.width = global.innerWidth || this.canvas.clientWidth || 1;
@@ -137,7 +201,12 @@
       if (!this.running && this.enabled) this._draw();
     },
 
-    /** Applique le palier de densité choisi dans les paramètres. */
+    /**
+     * Applique le palier de densité choisi dans les paramètres.
+     * @returns {boolean} true si le palier a changé depuis la dernière fois
+     * Concept : `SettingsManager.get()` lit un réglage sauvegardé. Si la
+     * valeur n'est pas reconnue, on retombe sur le palier `normal`.
+     */
     _applyDensity() {
       const settings = global.SettingsManager;
       const wanted = settings ? settings.get('particleDensity') : 'normal';
@@ -151,7 +220,15 @@
       return changed;
     },
 
-    /** Onde de choc au clic : impulsion locale + anneau lumineux. */
+    /**
+     * Onde de choc au clic : impulsion locale + anneau lumineux.
+     * @param {number} x coordonnée horizontale du clic (pixels CSS)
+     * @param {number} y coordonnée verticale du clic (pixels CSS)
+     * @returns {void}
+     * Concept : on calcule la distance du point au clic. Les points proches
+     * reçoivent une vitesse supplémentaire proportionnelle à la proximité.
+     * La portée vaut 1,25 fois `pointerDistance` (165 × 1,25).
+     */
     _pulseAt(x, y) {
       if (!this.enabled || !this.animated) return;
       const range = this.pointerDistance * 1.25;
@@ -167,11 +244,19 @@
           p.vy += (dy / dist) * force;
         }
       }
+      // L'anneau grandit de 6 à 78 pixels et s'estompe (decay 0,05 par image).
       this.rings.push({ x: x, y: y, radius: 6, max: 78, life: 1, decay: 0.05 });
       this._start();
     },
 
-    /** (Re)crée un nombre de particules adapté à la taille de l'écran. */
+    /**
+     * (Re)crée un nombre de particules adapté à la taille de l'écran.
+     * @returns {void}
+     * Concept : le nombre est calculé puis borné entre `min` et `max` du
+     * palier avec `Math.max`/`Math.min`. Si des particules existaient déjà,
+     * on garde leurs positions pour éviter un « saut » visuel au redimension.
+     * Environ 20 % des points sont des « phares » plus lumineux (`link`).
+     */
     _build() {
       if (!this.palette.length) return;
       const preset = this._preset || DENSITY_PRESETS.normal;
@@ -202,6 +287,12 @@
       }
     },
 
+    /**
+     * Vérifie que les animations sont autorisées par l'utilisateur/le système.
+     * @returns {boolean} true si le mouvement est autorisé
+     * Concept : une classe CSS sur le body ou le réglage système
+     * « prefers-reduced-motion » peut demander à supprimer les effets.
+     */
     _motionAllowed() {
       const body = global.document && global.document.body;
       if (body && (body.classList.contains('no-animations') ||
@@ -210,7 +301,13 @@
         global.matchMedia('(prefers-reduced-motion: reduce)').matches);
     },
 
-    /** Met à jour l'état de l'effet (réglage, mouvement réduit, onglet actif). */
+    /**
+     * Met à jour l'état de l'effet (réglage, mouvement réduit, onglet actif).
+     * @returns {void}
+     * Concept : cette méthode est le « chef d'orchestre » : elle décide si
+     * l'effet doit être visible et animé, puis démarre ou arrête la boucle.
+     * `document.hidden` indique que l'onglet n'est pas affiché.
+     */
     sync() {
       if (!this.canvas) return;
       const settings = global.SettingsManager;
@@ -230,10 +327,18 @@
       }
     },
 
+    /**
+     * Démarre la boucle d'animation avec requestAnimationFrame.
+     * @returns {void}
+     * Concept : le navigateur appelle la fonction `frame` avant chaque image.
+     * `dt` vaut 1 pour une image à 60 i/s ; il est plafonné à 40 ms pour ne
+     * pas faire sauter les objets après un long blocage.
+     */
     _start() {
       if (this.running) return;
       this.running = true;
       this.lastTime = global.performance ? global.performance.now() : Date.now();
+      /** Une image de la boucle : mise à jour, dessin, puis demande suivante. */
       const frame = (now) => {
         if (!this.running) return;
         const time = now || (global.performance ? global.performance.now() : Date.now());
@@ -246,6 +351,12 @@
       this.rafId = global.requestAnimationFrame(frame);
     },
 
+    /**
+     * Arrête proprement la boucle d'animation.
+     * @returns {void}
+     * Concept : `cancelAnimationFrame` annule l'image demandée mais pas encore
+     * affichée, ce qui évite de continuer à consommer du processeur.
+     */
     _stop() {
       if (!this.running) return;
       this.running = false;
@@ -253,6 +364,14 @@
       this.rafId = 0;
     },
 
+    /**
+     * Fait évoluer les particules et les ondes d'une image.
+     * @param {number} dt facteur de temps (1 ≈ 16,67 ms)
+     * @returns {void}
+     * Concept : les points rebondissent sur les bords en inversant leur
+     * vitesse (`Math.abs`). Le curseur repousse les points proches, puis un
+     * amortissement (`0.995 ^ dt`) empêche les vitesses de s'emballer.
+     */
     _update(dt) {
       const range = this.linkDistance;
       const speed = this.speedFactor || 1;
@@ -282,6 +401,7 @@
         p.vx *= Math.pow(0.995, dt);
         p.vy *= Math.pow(0.995, dt);
       }
+      // Les ondes de choc grandissent puis disparaissent (parcours à l'envers).
       for (let i = this.rings.length - 1; i >= 0; i--) {
         const ring = this.rings[i];
         ring.radius += 2.5 * dt;
@@ -290,6 +410,14 @@
       }
     },
 
+    /**
+     * Dessine le fond : liens entre points, ondes, liens curseur et points.
+     * @returns {void}
+     * Concept : `setTransform` passe en coordonnées CSS et `clearRect` efface
+     * l'image précédente. On compare les points deux à deux (boucle dans la
+     * boucle) pour tracer un lien seulement s'ils sont proches ; la
+     * transparence diminue avec la distance. `toFixed(3)` formate le nombre.
+     */
     _draw() {
       if (!this.ctx || !this.canvas || !this.palette.length) return;
       const ctx = this.ctx;
@@ -358,13 +486,20 @@
       }
     },
 
-    /** Activate/désactive l'effet et persiste le choix. */
+    /**
+     * Active/désactive l'effet et persiste le choix.
+     * @param {boolean} enabled true pour activer le fond animé
+     * @returns {void}
+     * Concept : `!!enabled` force la valeur en booléen. Si un gestionnaire de
+     * paramètres existe, on y enregistre le choix ; sinon on applique directement.
+     */
     setEnabled(enabled) {
       if (global.SettingsManager) global.SettingsManager.set('particlesEnabled', !!enabled);
       else { this.enabled = !!enabled; this.sync(); }
     }
   };
 
+  // Exposition globale (navigateur) et compatibilité Node avec `require()`.
   global.ParticlesBackground = ParticlesBackground;
   if (typeof module !== 'undefined' && module.exports) module.exports = ParticlesBackground;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
