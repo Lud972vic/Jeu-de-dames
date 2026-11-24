@@ -252,6 +252,6 @@ Code original sous licence **MIT**. Bootstrap (MIT), Lucide (ISC) et les polices
 
 **CHECKERS LEGEND 2026** — beau, rapide, et jouable même sans réseau.
 
-Fait par [Lud972vic](https://github.com/Lud972vic)
+Fait par [Lud972vic](https://github.com/Lud972vic) · Dépôt : [Jeu-de-dames](https://github.com/Lud972vic/Jeu-de-dames)
 
 </div>
