@@ -16,20 +16,21 @@
 | Stockage, paramètres, reprise | `tests/test-storage.js` | 11 | 11 | 0 |
 | Fond de particules | `tests/test-particles.js` | 5 | 5 | 0 |
 | Profils et sauvegardes nommées | `tests/test-profiles.js` | 4 | 4 | 0 |
+| Puzzles tactiques | `tests/test-puzzles.js` | 8 | 8 | 0 |
 | Intégrité, PWA, ressources | `tests/test-integrity.js` | 10 | 10 | 0 |
-| **Total Node.js** | — | **69** | **69** | **0** |
-| Parcours navigateur | `scripts/browser-smoke-test.js` | 16 étapes | 16 | 0 |
+| **Total Node.js** | — | **77** | **77** | **0** |
+| Parcours navigateur | `scripts/browser-smoke-test.js` | 17 étapes | 17 | 0 |
 
 **Conclusion :** la totalité des tests automatisés réussit. Le parcours navigateur
 couvre le chargement, l'ensemble des paramètres et leur réinitialisation, les modales,
 une partie contre l'IA avec réponse du Worker, la sauvegarde/reprise, la pause,
 l'annulation, le mode 2 joueurs, le choix des Noirs et l'orientation automatique, le
 responsive mobile, le Service Worker, le rechargement et une partie d'IA hors ligne,
-le repli sans Web Worker, la fin de partie et le rejeu, puis les profils et les
-parties nommées. Aucune exception JavaScript n'a été levée. `npm run verify`
-(vérification globale) passe également.
+le repli sans Web Worker, la fin de partie et le rejeu, les profils et les
+parties nommées, puis les puzzles et l'analyse IA. Aucune exception JavaScript
+n'a été levée. `npm run verify` (vérification globale) passe également.
 
-Le parcours navigateur headless (`scripts/browser-smoke-test.js`, 16 étapes) existe
+Le parcours navigateur headless (`scripts/browser-smoke-test.js`, 17 étapes) existe
 toujours et reste détaillé en section 6 ; il n'a pas été supprimé ni remplacé.
 
 Commande de reproduction :
@@ -167,6 +168,17 @@ réflexion selon le chronomètre restant.
 3. Sauvegardes nommées : création, lecture et suppression propres au profil actif.
 4. Renommage, suppression et garde du dernier profil.
 
+### Puzzles (`test-puzzles.js`)
+
+1. Catalogue de six puzzles uniques, avec titre, niveau et indice.
+2. Recherche par identifiant, avec retour `null` si absent.
+3. Puzzle du jour déterministe et présent dans le catalogue.
+4. Validation de toutes les positions et solutions contre le moteur de règles.
+5. Détection d'une solution impossible.
+6. Chaque coup de solution est légal et retire les pièces annoncées.
+7. Parcours cyclique du puzzle suivant.
+8. Atterrissages explicites pour les captures de dames volantes.
+
 ---
 
 ## 5. Tests d'intégrité et PWA (`test-integrity.js`)
@@ -210,8 +222,9 @@ Captures produites dans `docs/screenshots/`.
 | 14 | Repli sans Worker + fin de partie | Worker volontairement désactivé : recherche de secours, coup légal et statistiques ; timeout, défaite, statistiques/XP enregistrés, rejouer |
 | 15 | Clavier, sauvegardes et notation | Coup joué avec Entrée, navigation aux flèches, 3 emplacements affichés, écriture/chargement de l'emplacement 1, copie de la notation |
 | 16 | Profils et sauvegardes nommées | Partie nommée enregistrée, création d'un second profil, isolation des sauvegardes, retour au profil d'origine |
+| 17 | Puzzles et analyse de position | Plateau tactique chargé, indice, analyse IA affichée, puzzle suivant, id du puzzle persisté |
 
-**Résultat :** 16/16 étapes réussies, **0 exception JavaScript**.
+**Résultat :** 17/17 étapes réussies, **0 exception JavaScript**.
 
 Le test vérifie également que la sauvegarde contient bien les demi-coups joués et que
 la reprise restaure le bon joueur. Les effets sonores sont décodés par le navigateur

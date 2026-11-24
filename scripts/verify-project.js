@@ -18,6 +18,7 @@ const TESTS = [
   'tests/test-storage.js',
   'tests/test-particles.js',
   'tests/test-profiles.js',
+  'tests/test-puzzles.js',
   'tests/test-integrity.js'
 ];
 

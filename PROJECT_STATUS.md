@@ -43,6 +43,7 @@ PWA hors ligne, tests et documentation.
 - `js/game-engine.js` — état de partie, historique, annulation, répétitions.
 - `js/ai-engine.js` — Minimax + Alpha-Bêta, Zobrist, tri des coups, quiescence.
 - `js/ai-worker.js` — exécution non bloquante de l'IA.
+- `js/puzzles.js` — puzzles tactiques, validation des solutions, puzzle du jour.
 
 ### Interface et persistance
 
@@ -65,6 +66,7 @@ PWA hors ligne, tests et documentation.
 - `tests/test-storage.js` — 11 tests.
 - `tests/test-particles.js` — 5 tests.
 - `tests/test-profiles.js` — 4 tests.
+- `tests/test-puzzles.js` — 8 tests.
 - `tests/test-integrity.js` — 10 tests.
 
 ### Documentation et ressources
@@ -110,7 +112,9 @@ PWA hors ligne, tests et documentation.
 
 ### Interface
 
-- 3 écrans, 6 modales, thèmes multiples, styles de pièces.
+- 3 écrans, 7 modales, thèmes multiples, styles de pièces.
+- Puzzles tactiques : 6 positions, validation, indice, puzzle du jour, XP et ✓ sur les
+  puzzles résolus ; analyse IA de la position et bouton « Puzzle suivant ».
 - Palettes sombre et clair inspirées du logo (rouge/bleu/cyan/blanc) : plateau et dame
   bleus, contours rouges sur les pièces noires, accents cyan, boutons et logo
   rouge/bleu/cyan. La dame est dessinée comme deux disques de pion empilés surmontés
@@ -140,11 +144,11 @@ PWA hors ligne, tests et documentation.
 
 ## Résultats des derniers tests
 
-- **Node.js : 69/69 tests réussis**, 0 échec (28 règles, 11 IA, 11 stockage,
-  5 particules, 4 profils, 10 intégrité) ; `npm run verify` passe.
-- **Navigateur Edge headless : 16/16 étapes réussies**, 0 exception JavaScript
+- **Node.js : 77/77 tests réussis**, 0 échec (28 règles, 11 IA, 11 stockage,
+  5 particules, 4 profils, 8 puzzles, 10 intégrité) ; `npm run verify` passe.
+- **Navigateur Edge headless : 17/17 étapes réussies**, 0 exception JavaScript
   (réglages complets, choix des Noirs, repli sans Worker, hors ligne, fin de
-  partie, profils et sauvegardes nommées).
+  partie, profils et sauvegardes nommées, puzzles et analyse).
 - **Hors ligne :** rechargement et partie contre l'IA validés réseau coupé.
 - **Performance IA :** profondeur 12 en 2,18 s sur la position initiale (Expert),
   1,15 s en milieu de partie.
@@ -154,7 +158,7 @@ PWA hors ligne, tests et documentation.
 Commandes :
 
 ```bash
-npm test             # 69 tests Node.js
+npm test             # 77 tests Node.js
 npm run test:browser # parcours navigateur réel
 npm run verify       # vérification globale
 npm start            # http://127.0.0.1:8080
@@ -175,6 +179,5 @@ npm start            # http://127.0.0.1:8080
 
 Le projet est livré. Améliorations optionnelles possibles sans modifier le socle :
 
-1. Tests automatisés supplémentaires sur Firefox/Safari (Playwright ou Selenium).
-2. Mode puzzle / analyse de positions.
-3. Export/import de parties au format texte.
+1. Tests automatisés supplémentaires sur Firefox/Safari (sans dépendance réseau).
+2. Export/import de parties au format texte.

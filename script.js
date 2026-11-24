@@ -217,6 +217,8 @@
         puzzleDesc: $('#puzzle-desc'),
         puzzleFeedback: $('#puzzle-feedback'),
         puzzleSelect: $('#puzzle-select'),
+        puzzleNext: $('#btn-puzzle-next'),
+        puzzleAnalysis: $('#btn-puzzle-analysis'),
         modalHowto: $('#modal-howto'),
         modalHistory: $('#modal-history'),
         modalSaves: $('#modal-saves'),
@@ -350,9 +352,15 @@
 
       // Puzzles
       on('#btn-puzzle-hint', 'click', () => this.showPuzzleHint());
+      on('#btn-puzzle-analysis', 'click', () => this.analyzePuzzle());
       on('#btn-puzzle-reset', 'click', () => this.resetPuzzle());
+      on('#btn-puzzle-next', 'click', () => this.nextPuzzle());
       on('#btn-puzzle-daily', 'click', () => {
-        if (global.CheckersPuzzles) this.loadPuzzle(global.CheckersPuzzles.daily(), true);
+        if (global.CheckersPuzzles) {
+          this.loadPuzzle(global.CheckersPuzzles.daily(), true);
+          this.renderPuzzleOptions();
+          this.dom.puzzleSelect.value = global.CheckersPuzzles.daily().id;
+        }
       });
       this.dom.puzzleSelect.addEventListener('change', (event) => {
         if (!global.CheckersPuzzles) return;
@@ -1974,22 +1982,33 @@
       if (!Puzzles) return;
       this.closeModal('modal-achievements');
       this.closeModal('modal-replay');
-      this.dom.puzzleSelect.innerHTML = '';
-      Puzzles.list.forEach((puzzle) => {
-        const option = global.document.createElement('option');
-        option.value = puzzle.id;
-        option.textContent = puzzle.title + ' · ' + puzzle.level;
-        this.dom.puzzleSelect.appendChild(option);
-      });
       if (!this.puzzleRenderer) {
         this.puzzleRenderer = new global.BoardRenderer(this.dom.puzzleBoard, this.dom.puzzlePieces);
         this.puzzleRenderer.onSquareClick = (square) => this.onPuzzleSquareClick(square);
       }
-      this.loadPuzzle(Puzzles.daily());
+      const savedId = global.StorageManager.get(CFG.STORAGE.KEYS.PUZZLE, null);
+      const puzzle = Puzzles.getById(savedId) || Puzzles.daily();
+      this.renderPuzzleOptions();
+      this.loadPuzzle(puzzle);
       this.openModal('modal-puzzles');
     }
 
-    loadPuzzle(puzzle) {
+    renderPuzzleOptions() {
+      if (!this.dom.puzzleSelect || !global.CheckersPuzzles) return;
+      const solved = (this.stats && this.stats.solvedPuzzles) || [];
+      const current = this.dom.puzzleSelect.value;
+      this.dom.puzzleSelect.innerHTML = '';
+      for (const puzzle of global.CheckersPuzzles.list) {
+        const option = global.document.createElement('option');
+        option.value = puzzle.id;
+        option.textContent = (solved.indexOf(puzzle.id) >= 0 ? '✓ ' : '') +
+          puzzle.title + ' · ' + puzzle.level;
+        this.dom.puzzleSelect.appendChild(option);
+      }
+      if (current) this.dom.puzzleSelect.value = current;
+    }
+
+    loadPuzzle(puzzle, isDaily) {
       if (!puzzle || !this.puzzleRenderer) return;
       this.puzzleState = {
         puzzle: puzzle,
@@ -1998,12 +2017,15 @@
         selected: null,
         solved: false
       };
+      global.StorageManager.set(CFG.STORAGE.KEYS.PUZZLE, puzzle.id);
       this.puzzleRenderer.setFlipped(false);
       this.puzzleRenderer.render(this.puzzleState.board);
+      this.puzzleRenderer.clearHighlights();
       this.dom.puzzleSelect.value = puzzle.id;
       this.dom.puzzleLevel.textContent = String(puzzle.level).toUpperCase();
       this.dom.puzzleTitle.textContent = puzzle.title;
-      this.dom.puzzleDesc.textContent = 'Trouvez la séquence qui capture les bonnes pièces.';
+      this.dom.puzzleDesc.textContent = (isDaily ? 'Coup du jour · ' : '') +
+        'Trouvez la séquence qui capture les bonnes pièces.';
       this.dom.puzzleProgress.textContent = '0 / ' + puzzle.solution.length + ' coups';
       this.setPuzzleFeedback('À vous de jouer : choisissez une pièce blanche.');
     }
@@ -2079,6 +2101,8 @@
         (reward.xp > 0 ? ' +' + reward.xp + ' XP' : ' (déjà résolu)'), 'success');
       this.toast(reward.xp > 0 ? 'Puzzle résolu : +' + reward.xp + ' XP' : 'Puzzle résolu !', 'success');
       this.announceBadges(reward.unlocked);
+      this.renderPuzzleOptions();
+      this.dom.puzzleSelect.value = puzzle.id;
     }
 
     showPuzzleHint() {
@@ -2096,8 +2120,44 @@
         ' vers ' + Rules.squareNumber(move.to) + '.');
     }
 
+    /** Analyse la position avec l'IA locale et affiche le coup recommandé. */
+    analyzePuzzle() {
+      const state = this.puzzleState;
+      if (!state || state.solved || !global.CheckersAI) return;
+      const result = global.CheckersAI.search(state.board, state.puzzle.player, {
+        difficulty: 'normal', timeMs: 600, maxDepth: 6, randomness: 0, useTT: true
+      });
+      if (!result || !result.move) {
+        this.setPuzzleFeedback('Aucun coup légal à analyser.', 'error');
+        return;
+      }
+      const move = result.move;
+      this.puzzleRenderer.showMoves(move.from, [move], true);
+      const expected = state.puzzle.solution[state.step];
+      const captures = move.captures.slice().sort((a, b) => a - b).join(',');
+      const wanted = (expected.captures || []).slice().sort((a, b) => a - b).join(',');
+      const match = move.from === expected.from && captures === wanted &&
+        (!expected.to || move.to === expected.to);
+      this.setPuzzleFeedback('Analyse IA (prof. ' + result.depth + ') : case ' +
+        Rules.squareNumber(move.from) + ' → ' + Rules.squareNumber(move.to) +
+        ' · score ' + (result.score > 0 ? '+' : '') + result.score +
+        (match ? ' — c’est le coup attendu !' : ' — cherchez une autre prise.'));
+    }
+
+    nextPuzzle() {
+      if (!this.puzzleState || !global.CheckersPuzzles) return;
+      const next = global.CheckersPuzzles.next(this.puzzleState.puzzle.id);
+      this.renderPuzzleOptions();
+      this.loadPuzzle(next);
+      this.dom.puzzleSelect.value = next.id;
+    }
+
     resetPuzzle() {
-      if (this.puzzleState) this.loadPuzzle(this.puzzleState.puzzle);
+      if (this.puzzleState) {
+        this.loadPuzzle(this.puzzleState.puzzle);
+        this.renderPuzzleOptions();
+        this.dom.puzzleSelect.value = this.puzzleState.puzzle.id;
+      }
     }
 
     /* ============================================================

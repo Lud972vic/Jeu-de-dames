@@ -643,6 +643,19 @@ async function main() {
     assert.equal(await evaluate('window.ProfileManager.listNamed().length'), 1);
     assert.equal(await evaluate('window.checkersApp.settings.playerName'), originalPlayerName);
 
+    console.log('17. Puzzles et analyse de position');
+    await evaluate('window.checkersApp.openPuzzles()');
+    assert.equal(await evaluate('document.querySelectorAll("#puzzle-board .square").length'), 100);
+    await evaluate('document.querySelector("#btn-puzzle-hint").click()');
+    await evaluate('document.querySelector("#btn-puzzle-analysis").click()');
+    assert.match(await evaluate('document.querySelector("#puzzle-feedback").textContent'), /Analyse IA/);
+    const previousPuzzle = await evaluate('document.querySelector("#puzzle-select").value');
+    await evaluate('document.querySelector("#btn-puzzle-next").click()');
+    assert.notEqual(await evaluate('document.querySelector("#puzzle-select").value'), previousPuzzle);
+    assert.equal(await evaluate('JSON.parse(localStorage.getItem("cl2026:puzzle")).data'),
+      await evaluate('document.querySelector("#puzzle-select").value'));
+    await evaluate('document.querySelector("#modal-puzzles [data-close]").click()');
+
     await cdp.send('Network.emulateNetworkConditions', {
       offline: false,
       latency: 0,

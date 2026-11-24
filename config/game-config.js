@@ -73,7 +73,8 @@
         STATS: 'stats',
         SAVE: 'savegame',
         PROFILES: 'profiles',
-        NAMED_SAVES: 'namedsaves'
+        NAMED_SAVES: 'namedsaves',
+        PUZZLE: 'puzzle'
       }
     },
 

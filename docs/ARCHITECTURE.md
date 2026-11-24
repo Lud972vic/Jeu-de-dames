@@ -50,14 +50,15 @@ CHECKERS-LEGEND-2026/
 │   ├── storage-manager.js        # Sauvegardes locales (LocalStorage/IndexedDB) avec versioning de schéma
 │   ├── profile-manager.js        # Profils de joueurs, registre et sauvegardes nommées (miroir des clés historiques)
 │   ├── settings-manager.js       # Paramètres utilisateur persistés localement
-│   └── statistics.js             # Statistiques victoires/défaites, XP, niveaux, récompenses
+│   ├── statistics.js             # Statistiques victoires/défaites, XP, niveaux, récompenses
+│   └── puzzles.js                # Puzzles tactiques, validation des positions, puzzle du jour
 │
 ├── config/
 │   └── game-config.js            # Configuration globale : tailles, profondeurs par difficulté, valeurs d'évaluation, constantes
 │
 ├── tests/
 │   ├── run-tests.js              # Runner de tests minimaliste (node:test) — zéro dépendance externe
-│   └── test-*.js                 # Tests règles, IA, stockage, intégrité PWA et fond de particules
+│   └── test-*.js                 # Tests règles, IA, stockage, particules, profils, puzzles, intégrité PWA
 │
 ├── scripts/
 │   ├── fetch-dependencies.ps1    # Script reproductible de récupération des dépendances (Phase 1)

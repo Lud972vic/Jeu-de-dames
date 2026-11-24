@@ -61,6 +61,9 @@ Les dames internationales, dans leur version la plus propre : **unes règles off
 - **Chronomètres** 3 / 5 / 10 / 15 / 30 min ou illimités, pause, plein écran.
 - **XP, niveaux, statistiques** et historique des 50 dernières parties avec rejouabilité.
 - **Clavier** : Tab entre les cases jouables, Entrée/Espace pour jouer, flèches pour naviguer.
+- **6 puzzles tactiques** : rafles, promotion, dames volantes, puzzle du jour, indices et XP.
+- **Analyse de position** : l'IA locale recommande un coup directement dans la modale puzzle.
+- **Progression des puzzles** conservée : puzzle en cours rouvert, résolus marqués d'un ✓.
 
 ### Variantes non réglementaires
 
@@ -107,7 +110,7 @@ node scripts/serve.js 8080
 > Le serveur local fournit les bons types MIME et permet l'installation PWA. Sur **ordinateur**, ouvrir `index.html` en `file://` fonctionne aussi pour jouer, mais le Service Worker est désactivé par le navigateur ; l'IA bascule alors automatiquement sur le thread principal. Sur **Android**, utilisez plutôt le build autonome décrit plus bas.
 
 ```bash
-npm test             # 69 tests Node.js
+npm test             # 77 tests Node.js
 npm run test:browser # parcours navigateur headless (Edge/Chrome)
 npm run verify       # tests + intégrité PWA
 npm run build:offline # génère le fichier HTML unique pour Android
@@ -221,7 +224,7 @@ js/particles-background.js             Fond de particules canvas (thème adaptat
 assets/                                Polices, icônes, logo, sons WAV (locaux)
 scripts/                               Serveur, tests, génération d'assets, build HTML unique
 dist/                                  Build autonome généré par `npm run build:offline`
-tests/                                 69 tests Node.js
+tests/                                 77 tests Node.js
 docs/                                  Architecture, dépendances, rapports, captures
 ```
 

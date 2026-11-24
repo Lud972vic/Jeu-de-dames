@@ -31,6 +31,7 @@ test('Livrables obligatoires présents et non vides', () => {
     'js/audio-manager.js', 'js/storage-manager.js', 'js/profile-manager.js',
     'js/settings-manager.js', 'js/statistics.js',
     'tests/test-particles.js', 'tests/test-profiles.js',
+    'tests/test-puzzles.js',
     'manifest.json', 'service-worker.js', 'README.md', 'docs/TEST_REPORT.md',
     'vendor/bootstrap/css/bootstrap.min.css',
     'vendor/bootstrap/js/bootstrap.bundle.min.js',
