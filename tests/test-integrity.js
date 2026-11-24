@@ -31,7 +31,7 @@ test('Livrables obligatoires présents et non vides', () => {
     'js/audio-manager.js', 'js/storage-manager.js', 'js/profile-manager.js',
     'js/settings-manager.js', 'js/statistics.js',
     'tests/test-particles.js', 'tests/test-profiles.js',
-    'tests/test-puzzles.js',
+    'tests/test-puzzles.js', 'tests/test-webkit.js',
     'manifest.json', 'service-worker.js', 'README.md', 'docs/TEST_REPORT.md',
     'vendor/bootstrap/css/bootstrap.min.css',
     'vendor/bootstrap/js/bootstrap.bundle.min.js',
@@ -92,7 +92,7 @@ test('Syntaxe JavaScript valide pour tous les modules', () => {
     'js/animations.js', 'js/particles-background.js',
     'js/audio-manager.js', 'js/storage-manager.js', 'js/profile-manager.js',
     'js/settings-manager.js', 'js/statistics.js',
-    'scripts/serve.js'
+    'scripts/serve.js', 'scripts/browser-smoke-test-firefox.js'
   ];
   for (const file of files) {
     const result = spawnSync(process.execPath, ['--check', path.join(ROOT, file)], {

@@ -59,7 +59,8 @@ PWA hors ligne, tests et documentation.
 
 - `scripts/serve.js` — serveur HTTP local (MIME, Service Worker, sécurité).
 - `scripts/verify-project.js` — vérification globale en une commande.
-- `scripts/browser-smoke-test.js` — parcours navigateur headless via CDP.
+- `scripts/browser-smoke-test.js` — parcours navigateur headless via CDP (Edge/Chrome).
+- `scripts/browser-smoke-test-firefox.js` — parcours Firefox via WebDriver BiDi, zéro dépendance.
 - `scripts/generate-assets.js` — régénère icônes/logo/sons avec la palette du logo.
 - `tests/test-rules.js` — 28 tests.
 - `tests/test-ai.js` — 11 tests.
@@ -67,6 +68,7 @@ PWA hors ligne, tests et documentation.
 - `tests/test-particles.js` — 5 tests.
 - `tests/test-profiles.js` — 4 tests.
 - `tests/test-puzzles.js` — 8 tests.
+- `tests/test-webkit.js` — 4 tests (audit statique Safari/WebKit).
 - `tests/test-integrity.js` — 10 tests.
 
 ### Documentation et ressources
@@ -144,11 +146,13 @@ PWA hors ligne, tests et documentation.
 
 ## Résultats des derniers tests
 
-- **Node.js : 77/77 tests réussis**, 0 échec (28 règles, 11 IA, 11 stockage,
-  5 particules, 4 profils, 8 puzzles, 10 intégrité) ; `npm run verify` passe.
+- **Node.js : 81/81 tests réussis**, 0 échec (28 règles, 11 IA, 11 stockage,
+  5 particules, 4 profils, 8 puzzles, 4 WebKit, 10 intégrité) ; `npm run verify` passe.
 - **Navigateur Edge headless : 17/17 étapes réussies**, 0 exception JavaScript
   (réglages complets, choix des Noirs, repli sans Worker, hors ligne, fin de
   partie, profils et sauvegardes nommées, puzzles et analyse).
+- **Firefox 160 headless : 11/11 étapes réussies**, 0 exception, via le WebDriver
+  BiDi intégré au navigateur (aucun driver ni paquet à installer).
 - **Hors ligne :** rechargement et partie contre l'IA validés réseau coupé.
 - **Performance IA :** profondeur 12 en 2,18 s sur la position initiale (Expert),
   1,15 s en milieu de partie.
@@ -158,9 +162,10 @@ PWA hors ligne, tests et documentation.
 Commandes :
 
 ```bash
-npm test             # 77 tests Node.js
-npm run test:browser # parcours navigateur réel
-npm run verify       # vérification globale
+npm test                  # 81 tests Node.js
+npm run test:browser      # parcours navigateur réel (Edge/Chrome)
+npm run test:browser:firefox # parcours Firefox (BiDi)
+npm run verify            # vérification globale
 npm start            # http://127.0.0.1:8080
 ```
 
@@ -168,8 +173,9 @@ npm start            # http://127.0.0.1:8080
 
 - **PWA** : l'installation et le Service Worker nécessitent HTTP/HTTPS (utiliser
   `npm start`) ; sur `file://`, le jeu fonctionne mais sans cache hors ligne.
-- **Navigateurs** : validation automatisée sur Edge/Chromium uniquement ; Firefox
-  et Safari n'ont pas été exécutés dans cet environnement.
+- **Navigateurs** : validation automatisée sur Edge/Chromium et Firefox. Safari
+  n'est pas disponible sous Windows : seul un audit statique des replis WebKit
+  (`test-webkit.js`) est exécuté ici, pas un vrai lancement de Safari.
 - **Audio** : fichiers décodés et états vérifiés, mais l'audibilité dépend du matériel.
 - **Plein écran** : API protégée par gestion d'erreur, non automatisée en headless.
 - **Installation PWA réelle** : dépend de l'interface du navigateur, non automatisée.
@@ -179,5 +185,5 @@ npm start            # http://127.0.0.1:8080
 
 Le projet est livré. Améliorations optionnelles possibles sans modifier le socle :
 
-1. Tests automatisés supplémentaires sur Firefox/Safari (sans dépendance réseau).
+1. Lancer le parcours Safari réel sur un runner macOS (`safaridriver` intégré).
 2. Export/import de parties au format texte.

@@ -17,9 +17,11 @@
 | Fond de particules | `tests/test-particles.js` | 5 | 5 | 0 |
 | Profils et sauvegardes nommées | `tests/test-profiles.js` | 4 | 4 | 0 |
 | Puzzles tactiques | `tests/test-puzzles.js` | 8 | 8 | 0 |
+| Compatibilité WebKit (audit statique) | `tests/test-webkit.js` | 4 | 4 | 0 |
 | Intégrité, PWA, ressources | `tests/test-integrity.js` | 10 | 10 | 0 |
-| **Total Node.js** | — | **77** | **77** | **0** |
-| Parcours navigateur | `scripts/browser-smoke-test.js` | 17 étapes | 17 | 0 |
+| **Total Node.js** | — | **81** | **81** | **0** |
+| Parcours navigateur Edge | `scripts/browser-smoke-test.js` | 17 étapes | 17 | 0 |
+| Parcours navigateur Firefox | `scripts/browser-smoke-test-firefox.js` | 11 étapes | 11 | 0 |
 
 **Conclusion :** la totalité des tests automatisés réussit. Le parcours navigateur
 couvre le chargement, l'ensemble des paramètres et leur réinitialisation, les modales,
@@ -27,11 +29,14 @@ une partie contre l'IA avec réponse du Worker, la sauvegarde/reprise, la pause,
 l'annulation, le mode 2 joueurs, le choix des Noirs et l'orientation automatique, le
 responsive mobile, le Service Worker, le rechargement et une partie d'IA hors ligne,
 le repli sans Web Worker, la fin de partie et le rejeu, les profils et les
-parties nommées, puis les puzzles et l'analyse IA. Aucune exception JavaScript
-n'a été levée. `npm run verify` (vérification globale) passe également.
+parties nommées, puis les puzzles et l'analyse IA. Le second parcours, exécuté
+dans Firefox 160 via le WebDriver BiDi intégré, couvre 11 étapes équivalentes
+sans aucun driver à installer. Aucune exception JavaScript n'a été levée.
+`npm run verify` (vérification globale) passe également.
 
-Le parcours navigateur headless (`scripts/browser-smoke-test.js`, 17 étapes) existe
-toujours et reste détaillé en section 6 ; il n'a pas été supprimé ni remplacé.
+Les parcours navigateur headless (`scripts/browser-smoke-test.js`, 17 étapes, et
+`scripts/browser-smoke-test-firefox.js`, 11 étapes) existent toujours et restent
+détaillés en section 6 ; ils n'ont pas été supprimés ni remplacés.
 
 Commande de reproduction :
 
@@ -179,6 +184,17 @@ réflexion selon le chronomètre restant.
 7. Parcours cyclique du puzzle suivant.
 8. Atterrissages explicites pour les captures de dames volantes.
 
+### Compatibilité WebKit (`test-webkit.js`)
+
+Audit statique — **pas un lancement de Safari** : Safari n'est pas installable sous
+Windows et aucune dépendance réseau n'est autorisée.
+
+1. Repli `webkitAudioContext` présent à chaque création de contexte audio.
+2. Préfixes `-webkit-` conservés pour `backdrop-filter`, `mask-image` et
+   `font-smoothing`.
+3. Enregistrement du Service Worker protégé et limité à HTTP(S).
+4. Aucune API exclusive à Chromium dans le contrôleur principal.
+
 ---
 
 ## 5. Tests d'intégrité et PWA (`test-integrity.js`)
@@ -230,6 +246,30 @@ Le test vérifie également que la sauvegarde contient bien les demi-coups joué
 la reprise restaure le bon joueur. Les effets sonores sont décodés par le navigateur
 (5+ tampons audio), mais l'audibilité physique ne peut pas être mesurée en headless.
 
+### Parcours Firefox 160 (`browser-smoke-test-firefox.js`)
+
+Navigateur : Mozilla Firefox 160.0.1, mode `--headless`, piloté par **WebDriver BiDi**
+intégré au navigateur (WebSocket natif de Node, aucun geckodriver ni paquet npm).
+Serveur : `scripts/serve.js` sur `http://127.0.0.1:8125/`.
+
+| # | Scénario | Vérifications |
+|---|----------|---------------|
+| 1 | Chargement de l'accueil | Application initialisée, menu complet, capture `firefox-01-accueil.png` |
+| 2 | Paramètres et thèmes | Ouverture, changement de thème, réinitialisation |
+| 3 | Modales | Règles et succès |
+| 4 | Partie IA et réponse du Worker | 100 cases, coup humain, réponse de l'IA, capture `firefox-02-partie.png` |
+| 5 | Sauvegarde et reprise | Auto-save, rechargement, restauration de l'historique |
+| 6 | Pause et annulation | Overlay de pause, coup annulé |
+| 7 | Deux joueurs et orientation | Mode `pvp`, plateau inversé avec les Noirs |
+| 8 | Responsive mobile | `browsingContext.setViewport` 390×844, aucun débordement, capture `firefox-03-mobile.png` |
+| 9 | Service Worker et cache | Contrôle de la page et API `caches` disponible |
+| 10 | Profils et parties nommées | Création d'un profil, isolation des sauvegardes |
+| 11 | Puzzles et analyse | Plateau, analyse IA, puzzle suivant, persistance de l'id |
+
+**Résultat :** 11/11 étapes réussies, **0 exception JavaScript**. Les étapes CDP
+(émulation réseau hors ligne, neutralisation de `Worker`) ne sont pas reproductibles
+en BiDi et restent couvertes par le parcours Edge.
+
 ---
 
 ## 7. Captures de validation
@@ -240,6 +280,9 @@ la reprise restaure le bon joueur. Les effets sonores sont décodés par le navi
 | `docs/screenshots/02-partie-desktop.png` | Partie contre l'IA, plateau et panneaux |
 | `docs/screenshots/03-partie-mobile.png` | Interface mobile 390×844 |
 | `docs/screenshots/04-hors-ligne.png` | Partie jouée avec le réseau désactivé |
+| `docs/screenshots/firefox-01-accueil.png` | Accueil sous Firefox 160 |
+| `docs/screenshots/firefox-02-partie.png` | Partie IA sous Firefox 160 |
+| `docs/screenshots/firefox-03-mobile.png` | Interface Firefox à 390×844 |
 
 ---
 
@@ -247,9 +290,9 @@ la reprise restaure le bon joueur. Les effets sonores sont décodés par le navi
 
 Pour rester factuel, les points suivants ne sont pas couverts par l'automatisation :
 
-- **Navigateurs non testés automatiquement** : Firefox et Safari n'ont pas été exécutés
-  dans cet environnement (Edge/Chromium uniquement). Le code n'utilise que des API
-  standard largement supportées et prévoit des replis.
+- **Navigateurs non testés automatiquement** : Edge/Chromium et Firefox sont exécutés.
+  Safari n'est pas disponible sous Windows : l'audit `test-webkit.js` vérifie les
+  replis WebKit, mais ne remplace pas un lancement réel de Safari sur macOS.
 - **Installation PWA réelle** : le Service Worker et le cache hors ligne sont testés,
   mais l'installation depuis la barre d'adresse et le lancement en fenêtre autonome
   n'ont pas été automatisés (ils dépendent de l'interface du navigateur).

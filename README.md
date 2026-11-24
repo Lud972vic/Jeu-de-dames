@@ -110,9 +110,10 @@ node scripts/serve.js 8080
 > Le serveur local fournit les bons types MIME et permet l'installation PWA. Sur **ordinateur**, ouvrir `index.html` en `file://` fonctionne aussi pour jouer, mais le Service Worker est désactivé par le navigateur ; l'IA bascule alors automatiquement sur le thread principal. Sur **Android**, utilisez plutôt le build autonome décrit plus bas.
 
 ```bash
-npm test             # 77 tests Node.js
-npm run test:browser # parcours navigateur headless (Edge/Chrome)
-npm run verify       # tests + intégrité PWA
+npm test                  # 81 tests Node.js
+npm run test:browser      # parcours navigateur headless (Edge/Chrome)
+npm run test:browser:firefox # parcours Firefox 160+ via WebDriver BiDi, sans dépendance
+npm run verify            # tests + intégrité PWA
 npm run build:offline # génère le fichier HTML unique pour Android
 ```
 
@@ -199,8 +200,9 @@ La robustesse n'est pas un slogan : le moteur de règles est testé comme le cod
 
 | Suite | Résultat |
 |---|---|
-| Tests Node.js (`npm test`) | **60 / 60** — 28 règles, 11 IA, 11 stockage, 10 intégrité |
-| Parcours navigateur (`npm run test:browser`) | **15 / 15 étapes**, 0 exception JavaScript |
+| Tests Node.js (`npm test`) | **81 / 81** — règles, IA, stockage, particules, profils, puzzles, compatibilité WebKit, intégrité |
+| Parcours navigateur (`npm run test:browser`) | **17 / 17 étapes**, 0 exception JavaScript (Edge/Chromium) |
+| Parcours Firefox (`npm run test:browser:firefox`) | **11 / 11 étapes**, 0 exception (WebDriver BiDi intégré, zéro dépendance) |
 | Intégrité PWA (`npm run verify`) | **✅ validée** — ressources locales, manifeste, précache, ordre de chargement |
 | Hors ligne | IA, sauvegardes et statistiques vérifiés réseau coupé |
 
@@ -222,9 +224,9 @@ js/{storage,settings,statistics,audio,animations}-manager.js
 js/profile-manager.js                  Profils, registre et parties nommées
 js/particles-background.js             Fond de particules canvas (thème adaptatif)
 assets/                                Polices, icônes, logo, sons WAV (locaux)
-scripts/                               Serveur, tests, génération d'assets, build HTML unique
+scripts/                               Serveur, tests Edge/Firefox, génération d'assets, build HTML unique
 dist/                                  Build autonome généré par `npm run build:offline`
-tests/                                 77 tests Node.js
+tests/                                 81 tests Node.js
 docs/                                  Architecture, dépendances, rapports, captures
 ```
 
