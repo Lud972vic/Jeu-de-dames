@@ -71,7 +71,9 @@
       KEYS: {
         SETTINGS: 'settings',
         STATS: 'stats',
-        SAVE: 'savegame'
+        SAVE: 'savegame',
+        PROFILES: 'profiles',
+        NAMED_SAVES: 'namedsaves'
       }
     },
 

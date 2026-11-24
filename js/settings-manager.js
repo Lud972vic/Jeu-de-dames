@@ -32,6 +32,7 @@
   };
 
   const SettingsManager = {
+    DEFAULTS: DEFAULTS,
     settings: Object.assign({}, DEFAULTS),
     _motionBound: false,
 

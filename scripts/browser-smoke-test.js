@@ -610,6 +610,39 @@ async function main() {
     assert.equal(await evaluate('window.checkersApp.engine.history.length'), savedPlies);
     await evaluate('window.checkersApp.copyNotation()');
 
+    console.log('16. Profils et sauvegardes nommées');
+    await evaluate(`
+      (() => {
+        const app = window.checkersApp;
+        app.openSaves();
+        document.querySelector('#named-save-name').value = 'Partie test';
+        app.saveNamedGame();
+      })()
+    `);
+    assert.equal(await evaluate('window.ProfileManager.listNamed().length'), 1);
+    const originalProfileId = await evaluate('window.ProfileManager.active().id');
+    const originalPlayerName = await evaluate('window.checkersApp.settings.playerName');
+    await evaluate(`
+      (() => {
+        const app = window.checkersApp;
+        app.openProfiles();
+        document.querySelector('#new-profile-name').value = 'Test Profil';
+        app.createProfile();
+      })()
+    `);
+    assert.equal(await evaluate('window.ProfileManager.list().length'), 2);
+    assert.equal(await evaluate('window.checkersApp.settings.playerName'), 'Test Profil');
+    assert.equal(await evaluate('window.ProfileManager.listNamed().length'), 0);
+    await evaluate(`
+      (() => {
+        const app = window.checkersApp;
+        window.ProfileManager.select(${JSON.stringify(originalProfileId)});
+        app.applyActiveProfile(window.ProfileManager.active());
+      })()
+    `);
+    assert.equal(await evaluate('window.ProfileManager.listNamed().length'), 1);
+    assert.equal(await evaluate('window.checkersApp.settings.playerName'), originalPlayerName);
+
     await cdp.send('Network.emulateNetworkConditions', {
       offline: false,
       latency: 0,

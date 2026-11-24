@@ -14,19 +14,22 @@
 | Règles et moteur de jeu | `tests/test-rules.js` | 28 | 28 | 0 |
 | Intelligence artificielle | `tests/test-ai.js` | 11 | 11 | 0 |
 | Stockage, paramètres, reprise | `tests/test-storage.js` | 11 | 11 | 0 |
+| Fond de particules | `tests/test-particles.js` | 5 | 5 | 0 |
+| Profils et sauvegardes nommées | `tests/test-profiles.js` | 4 | 4 | 0 |
 | Intégrité, PWA, ressources | `tests/test-integrity.js` | 10 | 10 | 0 |
-| **Total Node.js** | — | **60** | **60** | **0** |
-| Parcours navigateur | `scripts/browser-smoke-test.js` | 15 étapes | 15 | 0 |
+| **Total Node.js** | — | **69** | **69** | **0** |
+| Parcours navigateur | `scripts/browser-smoke-test.js` | 16 étapes | 16 | 0 |
 
 **Conclusion :** la totalité des tests automatisés réussit. Le parcours navigateur
 couvre le chargement, l'ensemble des paramètres et leur réinitialisation, les modales,
 une partie contre l'IA avec réponse du Worker, la sauvegarde/reprise, la pause,
 l'annulation, le mode 2 joueurs, le choix des Noirs et l'orientation automatique, le
 responsive mobile, le Service Worker, le rechargement et une partie d'IA hors ligne,
-le repli sans Web Worker, puis la fin de partie et le rejeu. Aucune exception
-JavaScript n'a été levée. `npm run verify` (vérification globale) passe également.
+le repli sans Web Worker, la fin de partie et le rejeu, puis les profils et les
+parties nommées. Aucune exception JavaScript n'a été levée. `npm run verify`
+(vérification globale) passe également.
 
-Le parcours navigateur headless (`scripts/browser-smoke-test.js`, 15 étapes) existe
+Le parcours navigateur headless (`scripts/browser-smoke-test.js`, 16 étapes) existe
 toujours et reste détaillé en section 6 ; il n'a pas été supprimé ni remplacé.
 
 Commande de reproduction :
@@ -156,6 +159,14 @@ réflexion selon le chronomètre restant.
 10. Sérialisation, stockage et rechargement identiques ; annulation toujours possible.
 11. Coup légal après rechargement et statut cohérent.
 
+### Profils (`test-profiles.js`)
+
+1. Premier lancement : le profil par défaut récupère les données historiques sans
+   supprimer les clés existantes.
+2. Bascule A → B → A : isolation des réglages, statistiques et sauvegardes.
+3. Sauvegardes nommées : création, lecture et suppression propres au profil actif.
+4. Renommage, suppression et garde du dernier profil.
+
 ---
 
 ## 5. Tests d'intégrité et PWA (`test-integrity.js`)
@@ -198,8 +209,9 @@ Captures produites dans `docs/screenshots/`.
 | 13 | IA hors ligne | Coup humain accepté, réponse IA complète sans réseau |
 | 14 | Repli sans Worker + fin de partie | Worker volontairement désactivé : recherche de secours, coup légal et statistiques ; timeout, défaite, statistiques/XP enregistrés, rejouer |
 | 15 | Clavier, sauvegardes et notation | Coup joué avec Entrée, navigation aux flèches, 3 emplacements affichés, écriture/chargement de l'emplacement 1, copie de la notation |
+| 16 | Profils et sauvegardes nommées | Partie nommée enregistrée, création d'un second profil, isolation des sauvegardes, retour au profil d'origine |
 
-**Résultat :** 15/15 étapes réussies, **0 exception JavaScript**.
+**Résultat :** 16/16 étapes réussies, **0 exception JavaScript**.
 
 Le test vérifie également que la sauvegarde contient bien les demi-coups joués et que
 la reprise restaure le bon joueur. Les effets sonores sont décodés par le navigateur

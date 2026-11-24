@@ -34,6 +34,7 @@
 
   const Statistics = {
     ACHIEVEMENTS: ACHIEVEMENTS,
+    EMPTY: EMPTY,
     data: Object.assign({}, EMPTY),
 
     load() {

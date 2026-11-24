@@ -28,8 +28,9 @@ test('Livrables obligatoires présents et non vides', () => {
     'js/ai-engine.js', 'js/ai-worker.js', 'js/board-renderer.js',
     'js/puzzles.js',
     'js/animations.js', 'js/particles-background.js',
-    'js/audio-manager.js', 'js/storage-manager.js',
-    'js/settings-manager.js', 'js/statistics.js', 'tests/test-particles.js',
+    'js/audio-manager.js', 'js/storage-manager.js', 'js/profile-manager.js',
+    'js/settings-manager.js', 'js/statistics.js',
+    'tests/test-particles.js', 'tests/test-profiles.js',
     'manifest.json', 'service-worker.js', 'README.md', 'docs/TEST_REPORT.md',
     'vendor/bootstrap/css/bootstrap.min.css',
     'vendor/bootstrap/js/bootstrap.bundle.min.js',
@@ -88,7 +89,7 @@ test('Syntaxe JavaScript valide pour tous les modules', () => {
     'js/ai-engine.js', 'js/ai-worker.js', 'js/board-renderer.js',
     'js/puzzles.js',
     'js/animations.js', 'js/particles-background.js',
-    'js/audio-manager.js', 'js/storage-manager.js',
+    'js/audio-manager.js', 'js/storage-manager.js', 'js/profile-manager.js',
     'js/settings-manager.js', 'js/statistics.js',
     'scripts/serve.js'
   ];
@@ -175,6 +176,7 @@ test('Ordre de chargement des scripts compatible avec les modules UMD', () => {
     'js/game-rules.js',
     'js/game-engine.js',
     'js/storage-manager.js',
+    'js/profile-manager.js',
     'js/settings-manager.js',
     'js/statistics.js',
     'js/audio-manager.js',

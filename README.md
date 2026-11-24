@@ -54,6 +54,8 @@ Les dames internationales, dans leur version la plus propre : **unes règles off
 ### Le confort
 
 - **3 sauvegardes manuelles** en plus de la reprise automatique : écraser, charger, supprimer.
+- **Parties nommées** : enregistrez autant de parties que vous voulez sous un nom explicite.
+- **Profils de joueurs** : paramètres, statistiques, XP et sauvegardes séparés pour chaque joueur.
 - **Annulation intelligente** : remonte au dernier coup humain, y compris après la réponse de l'IA.
 - **Copie de la notation** des coups en un clic depuis l'historique.
 - **Chronomètres** 3 / 5 / 10 / 15 / 30 min ou illimités, pause, plein écran.
@@ -105,7 +107,7 @@ node scripts/serve.js 8080
 > Le serveur local fournit les bons types MIME et permet l'installation PWA. Sur **ordinateur**, ouvrir `index.html` en `file://` fonctionne aussi pour jouer, mais le Service Worker est désactivé par le navigateur ; l'IA bascule alors automatiquement sur le thread principal. Sur **Android**, utilisez plutôt le build autonome décrit plus bas.
 
 ```bash
-npm test             # 65 tests Node.js
+npm test             # 69 tests Node.js
 npm run test:browser # parcours navigateur headless (Edge/Chrome)
 npm run verify       # tests + intégrité PWA
 npm run build:offline # génère le fichier HTML unique pour Android
@@ -214,11 +216,12 @@ js/game-engine.js                      État, historique, annulation
 js/ai-engine.js · ai-worker.js         Minimax, Zobrist, Web Worker
 js/board-renderer.js                   Plateau, pièces, animations
 js/{storage,settings,statistics,audio,animations}-manager.js
+js/profile-manager.js                  Profils, registre et parties nommées
 js/particles-background.js             Fond de particules canvas (thème adaptatif)
 assets/                                Polices, icônes, logo, sons WAV (locaux)
 scripts/                               Serveur, tests, génération d'assets, build HTML unique
 dist/                                  Build autonome généré par `npm run build:offline`
-tests/                                 65 tests Node.js
+tests/                                 69 tests Node.js
 docs/                                  Architecture, dépendances, rapports, captures
 ```
 
@@ -230,7 +233,7 @@ Documentation technique : [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · [`do
 
 ## Confidentialité
 
-Tout est conservé dans `localStorage` sous le préfixe `cl2026:` : paramètres, statistiques et sauvegardes. **Aucune donnée n'est envoyée, synchronisée ou analysée.** Effacer les données du site supprime la progression. Les parties à deux joueurs ne modifient ni l'XP ni les statistiques personnelles.
+Tout est conservé dans `localStorage` sous le préfixe `cl2026:` : paramètres, statistiques, profils et sauvegardes. **Aucune donnée n'est envoyée, synchronisée ou analysée.** Effacer les données du site supprime la progression. Les parties à deux joueurs ne modifient ni l'XP ni les statistiques personnelles.
 
 ---
 

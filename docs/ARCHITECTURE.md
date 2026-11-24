@@ -48,6 +48,7 @@ CHECKERS-LEGEND-2026/
 │   ├── particles-background.js   # Fond de particules canvas (densité, clic, thèmes)
 │   ├── audio-manager.js          # Gestion des sons locaux (Web Audio API / <audio>)
 │   ├── storage-manager.js        # Sauvegardes locales (LocalStorage/IndexedDB) avec versioning de schéma
+│   ├── profile-manager.js        # Profils de joueurs, registre et sauvegardes nommées (miroir des clés historiques)
 │   ├── settings-manager.js       # Paramètres utilisateur persistés localement
 │   └── statistics.js             # Statistiques victoires/défaites, XP, niveaux, récompenses
 │

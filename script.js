@@ -87,6 +87,7 @@
         this.toast('Stockage local indisponible : la progression ne sera pas conservée.', 'error', 5200);
       }
 
+      if (global.ProfileManager) global.ProfileManager.ensure();
       this.settings = global.SettingsManager.load();
       this.updateThemeUI();
       this.updateCoachUI();
@@ -167,6 +168,11 @@
 
         historyList: $('#history-list'),
         savesList: $('#saves-list'),
+        namedSavesList: $('#named-saves-list'),
+        namedSaveName: $('#named-save-name'),
+        modalProfiles: $('#modal-profiles'),
+        profilesList: $('#profiles-list'),
+        newProfileName: $('#new-profile-name'),
         copyNotation: $('#btn-copy-notation'),
         aiStatsPanel: $('#ai-stats-panel'),
         aiDepth: $('#ai-depth'),
@@ -296,6 +302,9 @@
       on('#btn-history', 'click', () => this.openHistory());
       on('#btn-saves', 'click', () => this.openSaves());
       on('#btn-saves-game', 'click', () => this.openSaves());
+      on('#btn-save-named', 'click', () => this.saveNamedGame());
+      on('#btn-profiles', 'click', () => this.openProfiles());
+      on('#btn-create-profile', 'click', () => this.createProfile());
       on('#btn-copy-notation', 'click', () => this.copyNotation());
       on('#btn-resume', 'click', () => this.resumeGame());
 
@@ -789,9 +798,7 @@
         if (options.key) global.StorageManager.remove(options.key);
         return false;
       };
-      if (!save || !save.engine || !Array.isArray(save.engine.board) || save.engine.board.length !== 100) {
-        return invalid();
-      }
+      if (!this.isValidSave(save)) return invalid();
       if (!this.engine.loadState(save.engine) || this.engine.status.over) return invalid();
 
       this.cancelAI();
@@ -2263,12 +2270,17 @@
 
     /** Télécharge les paramètres et les scores dans un fichier JSON. */
     exportData() {
+      if (global.ProfileManager) global.ProfileManager.snapshot();
       const payload = {
         format: 'checkers-legend-2026',
         version: 1,
         exportedAt: new Date().toISOString(),
         settings: Object.assign({}, global.SettingsManager.settings),
-        stats: Object.assign({}, global.Statistics.data)
+        stats: Object.assign({}, global.Statistics.data),
+        profiles: global.ProfileManager ? global.ProfileManager.registry : undefined,
+        profilesActiveId: global.ProfileManager && global.ProfileManager.registry
+          ? global.ProfileManager.registry.activeId
+          : undefined
       };
       try {
         const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
@@ -2294,6 +2306,16 @@
             !payload.settings || !payload.stats) {
           throw new Error('Format de fichier invalide.');
         }
+        if (global.ProfileManager && Array.isArray(payload.profiles) && payload.profiles.length) {
+          const activeId = payload.profiles.some((p) => p && p.id === payload.profilesActiveId)
+            ? payload.profilesActiveId
+            : payload.profiles[0].id;
+          global.StorageManager.set(CFG.STORAGE.KEYS.PROFILES, {
+            version: 1, activeId: activeId, profiles: payload.profiles
+          });
+          global.ProfileManager.registry = null;
+          global.ProfileManager.ensure();
+        }
         const settingsOk = global.SettingsManager.importData(payload.settings);
         const statsOk = global.Statistics.importData(payload.stats);
         if (!settingsOk || !statsOk) throw new Error('Données invalides dans le fichier.');
@@ -2307,6 +2329,10 @@
         this.updateCoachUI();
         this.updateHome();
         this.renderSettingsPreview();
+        if (global.ProfileManager) {
+          global.ProfileManager.snapshot();
+          this.renderProfiles();
+        }
         this.toast('Données importées avec succès.', 'success');
       } catch (error) {
         this.toast('Import impossible : ' + error.message, 'error');
@@ -2440,14 +2466,24 @@
      * ============================================================ */
 
     bindPersistence() {
-      global.addEventListener('pagehide', () => this.saveGame());
-      global.addEventListener('beforeunload', () => this.saveGame());
+      const sync = () => {
+        this.saveGame();
+        if (global.ProfileManager) global.ProfileManager.snapshot();
+      };
+      global.addEventListener('pagehide', sync);
+      global.addEventListener('beforeunload', sync);
       global.document.addEventListener('visibilitychange', () => {
         if (global.document.hidden) {
           if (this.gameActive && !this.paused) this.togglePause(true);
-          this.saveGame();
+          sync();
         }
       });
+    }
+
+    /** Valide un payload de sauvegarde avant chargement. */
+    isValidSave(save) {
+      return !!(save && save.engine && Array.isArray(save.engine.board) &&
+        save.engine.board.length === 100);
     }
 
     /** Construit le payload de sauvegarde complet (auto-save et emplacements). */
@@ -2504,7 +2540,7 @@
       }
     }
 
-    /* ---------- Sauvegardes manuelles (3 emplacements) ---------- */
+    /* ---------- Sauvegardes manuelles et parties nommées ---------- */
 
     saveSlotKey(slot) {
       return CFG.STORAGE.KEYS.SAVE + ':slot' + slot;
@@ -2512,7 +2548,26 @@
 
     openSaves() {
       this.renderSaveSlots();
+      this.renderNamedSaves();
       this.openModal('modal-saves');
+    }
+
+    makeSaveButton(label, icon, handler, disabled) {
+      const btn = global.document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'ctrl-btn';
+      btn.disabled = !!disabled;
+      btn.innerHTML = '<span class="icon ' + icon + '"></span><span>' + label + '</span>';
+      btn.addEventListener('click', handler);
+      return btn;
+    }
+
+    saveMeta(save) {
+      if (!this.isValidSave(save)) return 'Vide';
+      const modeText = save.config && save.config.mode === 'pvp' ? '2 joueurs' : 'VS IA';
+      const when = save.savedAt ? new Date(save.savedAt).toLocaleString() : '—';
+      const moves = save.engine.history ? save.engine.history.length : 0;
+      return modeText + ' · ' + moves + ' coups · ' + when;
     }
 
     renderSaveSlots() {
@@ -2530,35 +2585,20 @@
         title.textContent = 'EMPLACEMENT ' + slot;
         const meta = global.document.createElement('span');
         meta.className = 'save-slot-meta';
-        if (save && save.engine && Array.isArray(save.engine.history)) {
-          const modeText = save.config && save.config.mode === 'pvp' ? '2 joueurs' : 'VS IA';
-          const when = save.savedAt ? new Date(save.savedAt).toLocaleString() : '—';
-          meta.textContent = modeText + ' · ' + save.engine.history.length + ' coups · ' + when;
-        } else {
-          meta.textContent = 'Vide';
-        }
+        meta.textContent = this.saveMeta(save);
         info.appendChild(title);
         info.appendChild(meta);
 
         const actions = global.document.createElement('div');
         actions.className = 'save-slot-actions';
-        const hasSave = !!(save && save.engine && Array.isArray(save.engine.history));
-        const mkBtn = (label, icon, handler, disabled) => {
-          const btn = global.document.createElement('button');
-          btn.type = 'button';
-          btn.className = 'ctrl-btn';
-          btn.disabled = !!disabled;
-          btn.innerHTML = '<span class="icon ' + icon + '"></span><span>' + label + '</span>';
-          btn.addEventListener('click', handler);
-          return btn;
-        };
-        actions.appendChild(mkBtn('Charger', 'i-play', () => this.loadFromSlot(slot), !hasSave));
-        actions.appendChild(mkBtn('Écraser', 'i-download', async () => {
+        const hasSave = this.isValidSave(save);
+        actions.appendChild(this.makeSaveButton('Charger', 'i-play', () => this.loadFromSlot(slot), !hasSave));
+        actions.appendChild(this.makeSaveButton('Écraser', 'i-download', async () => {
           if (await this.askConfirm('Écraser l’emplacement ' + slot + ' ?', 'ÉCRASER')) {
             this.saveToSlot(slot);
           }
         }));
-        actions.appendChild(mkBtn('Supprimer', 'i-close', async () => {
+        actions.appendChild(this.makeSaveButton('Supprimer', 'i-close', async () => {
           if (await this.askConfirm('Supprimer l’emplacement ' + slot + ' ?', 'SUPPRIMER')) {
             this.deleteSlot(slot);
           }
@@ -2567,6 +2607,59 @@
         li.appendChild(info);
         li.appendChild(actions);
         this.dom.savesList.appendChild(li);
+      }
+    }
+
+    renderNamedSaves() {
+      if (!this.dom.namedSavesList || !global.ProfileManager) return;
+      this.dom.namedSavesList.innerHTML = '';
+      for (const entry of global.ProfileManager.listNamed()) {
+        const li = global.document.createElement('li');
+        li.className = 'save-slot';
+        const info = global.document.createElement('div');
+        info.className = 'save-slot-info';
+        const title = global.document.createElement('span');
+        title.className = 'save-slot-title';
+        title.textContent = entry.name;
+        const meta = global.document.createElement('span');
+        meta.className = 'save-slot-meta';
+        meta.textContent = this.saveMeta(entry.payload);
+        info.appendChild(title);
+        info.appendChild(meta);
+
+        const actions = global.document.createElement('div');
+        actions.className = 'save-slot-actions';
+        const hasSave = this.isValidSave(entry.payload);
+        actions.appendChild(this.makeSaveButton('Charger', 'i-play', () => this.loadNamedGame(entry.id), !hasSave));
+        actions.appendChild(this.makeSaveButton('Supprimer', 'i-close', async () => {
+          if (await this.askConfirm('Supprimer la partie « ' + entry.name + ' » ?', 'SUPPRIMER')) {
+            global.ProfileManager.removeNamed(entry.id);
+            this.renderNamedSaves();
+          }
+        }));
+        li.appendChild(info);
+        li.appendChild(actions);
+        this.dom.namedSavesList.appendChild(li);
+      }
+    }
+
+    saveNamedGame() {
+      if (!global.ProfileManager) return;
+      if (!this.gameActive || this.engine.status.over || this.engine.history.length === 0) {
+        this.toast('Aucune partie en cours à enregistrer.', 'error');
+        return;
+      }
+      const name = (this.dom.namedSaveName && this.dom.namedSaveName.value || '').trim();
+      const entry = global.ProfileManager.saveNamed(name, this.buildSavePayload());
+      if (this.dom.namedSaveName) this.dom.namedSaveName.value = '';
+      this.toast('Partie « ' + entry.name + ' » enregistrée.', 'success');
+      this.renderNamedSaves();
+    }
+
+    loadNamedGame(id) {
+      const entry = global.ProfileManager && global.ProfileManager.getNamed(id);
+      if (!entry || !this.loadSavePayload(entry.payload, { manual: true })) {
+        this.toast('Partie nommée vide ou invalide.', 'error');
       }
     }
 
@@ -2592,6 +2685,131 @@
       if (!this.loadSavePayload(save, { key: key, manual: true })) {
         this.toast('Emplacement ' + slot + ' vide ou invalide.', 'error');
       }
+    }
+
+    /* ---------- Profils de joueurs ---------- */
+
+    openProfiles() {
+      if (!global.ProfileManager) return;
+      this.renderProfiles();
+      this.openModal('modal-profiles');
+    }
+
+    renderProfiles() {
+      if (!this.dom.profilesList || !global.ProfileManager) return;
+      this.dom.profilesList.innerHTML = '';
+      for (const profile of global.ProfileManager.list()) {
+        const li = global.document.createElement('li');
+        li.className = 'profile-item' + (profile.active ? ' is-active' : '');
+
+        const avatar = global.document.createElement('span');
+        avatar.className = 'profile-avatar';
+        avatar.innerHTML = '<span class="icon i-' + (profile.avatar || 'user') + '"></span>';
+
+        const info = global.document.createElement('div');
+        info.className = 'profile-info';
+        const name = global.document.createElement('span');
+        name.className = 'profile-name';
+        name.textContent = profile.name + (profile.active ? ' · ACTIF' : '');
+        const meta = global.document.createElement('span');
+        meta.className = 'profile-meta';
+        meta.textContent = 'Niv. ' + (Math.floor(profile.xp / CFG.XP.LEVEL_STEP) + 1) +
+          ' · ' + profile.wins + ' victoires · ' + profile.games + ' parties';
+        info.appendChild(name);
+        info.appendChild(meta);
+
+        const actions = global.document.createElement('div');
+        actions.className = 'profile-actions';
+        if (!profile.active) {
+          actions.appendChild(this.makeSaveButton('Activer', 'i-play', async () => {
+            if (await this.askConfirm('Activer le profil « ' + profile.name + ' » ?', 'ACTIVER')) {
+              this.selectProfile(profile.id);
+            }
+          }));
+        }
+        actions.appendChild(this.makeSaveButton('Renommer', 'i-check', () => this.renameProfile(profile.id)));
+        actions.appendChild(this.makeSaveButton('Supprimer', 'i-close', async () => {
+          if (await this.askConfirm('Supprimer le profil « ' + profile.name + ' » ?', 'SUPPRIMER')) {
+            this.deleteProfile(profile.id);
+          }
+        }, global.ProfileManager.list().length <= 1));
+
+        li.appendChild(avatar);
+        li.appendChild(info);
+        li.appendChild(actions);
+        this.dom.profilesList.appendChild(li);
+      }
+    }
+
+    /** Recharge l'interface après une bascule de profil. */
+    applyActiveProfile(profile, message) {
+      this.cancelAI();
+      this.closeAllModals();
+      this.gameActive = false;
+      this.gameOverShown = false;
+      this.busy = false;
+      this.selected = null;
+      this.paused = false;
+      this.pendingAI = false;
+      this.settings = global.SettingsManager.load();
+      this.stats = global.Statistics.load();
+      global.AudioManager.configure(this.settings);
+      this.updateThemeUI();
+      this.updateSoundUI();
+      this.updateProfileUI();
+      this.updateCoachUI();
+      this.updateHome();
+      this.renderSettingsPreview();
+      this.refreshResumeButton();
+      this.showScreen('home');
+      this.toast(message || ('Profil « ' + profile.name + ' » activé.'), 'success');
+    }
+
+    createProfile() {
+      if (!global.ProfileManager) return;
+      const name = (this.dom.newProfileName && this.dom.newProfileName.value || '').trim();
+      if (!name) {
+        this.toast('Saisissez un nom pour le nouveau profil.', 'error');
+        return;
+      }
+      const profile = global.ProfileManager.create(name);
+      if (this.dom.newProfileName) this.dom.newProfileName.value = '';
+      this.applyActiveProfile(profile, 'Profil « ' + profile.name + ' » créé.');
+    }
+
+    renameProfile(id) {
+      if (!global.ProfileManager) return;
+      const name = (this.dom.newProfileName && this.dom.newProfileName.value || '').trim();
+      if (!name) {
+        this.toast('Saisissez le nouveau nom dans le champ prévu.', 'error');
+        return;
+      }
+      const wasActive = id === global.ProfileManager.active().id;
+      if (!global.ProfileManager.rename(id, name)) return;
+      if (wasActive) {
+        this.settings = global.SettingsManager.load();
+        this.updateProfileUI();
+      }
+      this.renderProfiles();
+      this.toast('Profil renommé en « ' + name + ' ».', 'success');
+    }
+
+    selectProfile(id) {
+      if (!global.ProfileManager) return;
+      const profile = global.ProfileManager.select(id);
+      if (!profile) return;
+      this.applyActiveProfile(profile);
+    }
+
+    deleteProfile(id) {
+      if (!global.ProfileManager) return;
+      const wasActive = id === global.ProfileManager.active().id;
+      if (!global.ProfileManager.remove(id)) {
+        this.toast('Impossible de supprimer le dernier profil.', 'error');
+        return;
+      }
+      if (wasActive) this.applyActiveProfile(global.ProfileManager.active(), 'Profil supprimé.');
+      else this.renderProfiles();
     }
 
     /* ============================================================

@@ -1,6 +1,6 @@
 # CHECKERS LEGEND 2026 — Suivi du projet
 
-> État au 22 novembre 2026 — **livraison finale v1.0.0**.
+> État au 24 novembre 2026 — **livraison finale v1.0.0**.
 
 ## Phase actuelle
 
@@ -50,6 +50,7 @@ PWA hors ligne, tests et documentation.
 - `js/animations.js` — particules, confettis, Canvas.
 - `js/audio-manager.js` — 7 sons WAV locaux, volume, coupure.
 - `js/storage-manager.js` — `localStorage` versionné et tolérant aux erreurs.
+- `js/profile-manager.js` — profils de joueurs et sauvegardes nommées.
 - `js/settings-manager.js` — paramètres persistants et thèmes.
 - `js/statistics.js` — XP, niveaux, victoires/défaites/nuls, historique.
 
@@ -62,6 +63,8 @@ PWA hors ligne, tests et documentation.
 - `tests/test-rules.js` — 28 tests.
 - `tests/test-ai.js` — 11 tests.
 - `tests/test-storage.js` — 11 tests.
+- `tests/test-particles.js` — 5 tests.
+- `tests/test-profiles.js` — 4 tests.
 - `tests/test-integrity.js` — 10 tests.
 
 ### Documentation et ressources
@@ -123,7 +126,8 @@ PWA hors ligne, tests et documentation.
 
 - XP par victoire/nul/défaite selon la difficulté, niveaux.
 - Statistiques personnelles, meilleur score, 50 dernières parties.
-- Sauvegarde automatique et reprise de partie.
+- Sauvegarde automatique, 3 emplacements manuels et parties nommées.
+- Profils de joueurs multiples : paramètres, XP et sauvegardes isolés.
 - Partie 2 joueurs historisée sans impact sur les statistiques personnelles.
 - Paramètres et progression conservés localement.
 
@@ -136,10 +140,11 @@ PWA hors ligne, tests et documentation.
 
 ## Résultats des derniers tests
 
-- **Node.js : 65/65 tests réussis**, 0 échec (28 règles, 11 IA, 11 stockage,
-  5 particules, 10 intégrité) ; `npm run verify` passe.
-- **Navigateur Edge headless : 15/15 étapes réussies**, 0 exception JavaScript
-  (réglages complets, choix des Noirs, repli sans Worker, hors ligne, fin de partie).
+- **Node.js : 69/69 tests réussis**, 0 échec (28 règles, 11 IA, 11 stockage,
+  5 particules, 4 profils, 10 intégrité) ; `npm run verify` passe.
+- **Navigateur Edge headless : 16/16 étapes réussies**, 0 exception JavaScript
+  (réglages complets, choix des Noirs, repli sans Worker, hors ligne, fin de
+  partie, profils et sauvegardes nommées).
 - **Hors ligne :** rechargement et partie contre l'IA validés réseau coupé.
 - **Performance IA :** profondeur 12 en 2,18 s sur la position initiale (Expert),
   1,15 s en milieu de partie.
@@ -149,7 +154,7 @@ PWA hors ligne, tests et documentation.
 Commandes :
 
 ```bash
-npm test             # 65 tests Node.js
+npm test             # 69 tests Node.js
 npm run test:browser # parcours navigateur réel
 npm run verify       # vérification globale
 npm start            # http://127.0.0.1:8080
@@ -171,6 +176,5 @@ npm start            # http://127.0.0.1:8080
 Le projet est livré. Améliorations optionnelles possibles sans modifier le socle :
 
 1. Tests automatisés supplémentaires sur Firefox/Safari (Playwright ou Selenium).
-2. Profils de joueurs multiples et sauvegardes nommées.
-3. Mode puzzle / analyse de positions.
-4. Export/import de parties au format texte.
+2. Mode puzzle / analyse de positions.
+3. Export/import de parties au format texte.

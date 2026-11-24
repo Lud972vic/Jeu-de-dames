@@ -8,7 +8,7 @@
 'use strict';
 
 const CACHE_PREFIX = 'checkers-legend-2026-';
-const CACHE_NAME = CACHE_PREFIX + 'v1.2.6';
+const CACHE_NAME = CACHE_PREFIX + 'v1.2.7';
 
 const PRECACHE = [
   './',
@@ -22,6 +22,7 @@ const PRECACHE = [
   './js/ai-engine.js',
   './js/ai-worker.js',
   './js/storage-manager.js',
+  './js/profile-manager.js',
   './js/settings-manager.js',
   './js/statistics.js',
   './js/audio-manager.js',
