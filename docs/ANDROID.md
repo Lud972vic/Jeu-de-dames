@@ -93,7 +93,7 @@ disponible hors ligne après le premier chargement.
 6. Après ce premier chargement, coupez le réseau : le jeu fonctionne toujours.
 
 Le manifeste utilise des chemins relatifs (`"./"`), donc l'installation
-fonctionne aussi dans un sous-dossier comme `.../JeuxDeDames/`.
+fonctionne aussi dans un sous-dossier comme `.../Jeu-de-dames/`.
 
 ---
 

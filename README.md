@@ -178,7 +178,7 @@ sans serveur et sans installer quoi que ce soit.
 4. Après le premier chargement, tout fonctionne **hors ligne**, IA comprise.
 
 Le manifeste utilise des chemins relatifs (`"./"`), donc l'installation
-fonctionne aussi depuis un sous-dossier (`.../JeuxDeDames/`).
+fonctionne aussi depuis un sous-dossier (`.../Jeu-de-dames/`).
 
 ### Option 3 — APK via PWABuilder
 
