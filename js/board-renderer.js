@@ -379,6 +379,8 @@
       if (!el) return;
 
       el.classList.add('moving');
+      // Une dame qui mange « frappe » : aura dorée + rotation pendant le coup.
+      if (opts.moverIsKing) el.classList.add('queen-strike');
       this.clearHighlights();
 
       const stops = [move.from].concat(move.path);
@@ -394,6 +396,9 @@
         const capturedSquare = move.captures[captureIndex];
         if (capturedSquare !== undefined) {
           const capEl = this.pieceEls.get(capturedSquare);
+          // On retient si la victime était une dame (classe 'king') avant de
+          // retirer son élément : le contrôleur s'en sert pour la décapitation.
+          const wasKing = !!(capEl && capEl.classList.contains('king'));
           if (capEl) {
             capEl.classList.add('captured');
             this.pieceEls.delete(capturedSquare);
@@ -401,12 +406,12 @@
             global.setTimeout(() => capEl.remove(), 380);
           }
           if (opts.onCapture) {
-            opts.onCapture(capturedSquare, captureIndex + 1, move.captures.length);
+            opts.onCapture(capturedSquare, captureIndex + 1, move.captures.length, wasKing);
           }
         }
       }
 
-      el.classList.remove('moving');
+      el.classList.remove('moving', 'queen-strike');
       if (move.promotes) {
         el.classList.remove('man');
         el.classList.add('king', 'promoting');

@@ -460,6 +460,8 @@ async function main() {
         toggle('#set-github-promo', false);
         toggle('#set-captures-optional', true);
         toggle('#set-chain-captures', true);
+        toggle('#set-gore-mode', true);
+        toggle('#set-decapitation-mode', true);
         document.querySelector('#modal-settings [data-flip="true"]').click();
         return {
           theme: document.body.dataset.theme,
@@ -491,6 +493,8 @@ async function main() {
     assert.equal(changed.settings.boardFlipped, true);
     assert.equal(changed.settings.capturesOptional, true);
     assert.equal(changed.settings.chainCaptures, true);
+    assert.equal(changed.settings.goreMode, true);
+    assert.equal(changed.settings.decapitationMode, true);
 
     await evaluate('document.querySelector("#btn-reset-settings").click()');
     const reset = await evaluate(`
@@ -520,6 +524,8 @@ async function main() {
     assert.equal(reset.settings.boardFlipped, false);
     assert.equal(reset.settings.capturesOptional, false);
     assert.equal(reset.settings.chainCaptures, false);
+    assert.equal(reset.settings.goreMode, false);
+    assert.equal(reset.settings.decapitationMode, false);
     assert.ok(reset.soundIcon.indexOf('i-volume-off') === -1 && reset.soundIcon.indexOf('i-volume') !== -1);
     await evaluate('document.querySelector("#modal-settings .modal-close").click()');
 
@@ -527,7 +533,7 @@ async function main() {
     // jouer » et « historique » en cliquant sur les boutons de la page.
     console.log('3. Modales règles et historique');
     await evaluate('document.querySelector("#btn-howto").click()');
-    assert.equal(await evaluate('document.querySelectorAll("#modal-howto .howto-card").length'), 7);
+    assert.equal(await evaluate('document.querySelectorAll("#modal-howto .howto-card").length'), 8);
     await evaluate('document.querySelector("#modal-howto .modal-close").click()');
     await evaluate('document.querySelector("#btn-history").click()');
     assert.equal(await evaluate('!document.querySelector("#modal-history").classList.contains("hidden")'), true);
@@ -594,6 +600,66 @@ async function main() {
     assert.ok(captureFx.cracks >= 5, 'fissures absentes');
     assert.ok(captureFx.splats >= 10, 'éclaboussures absentes');
     assert.ok(captureFx.flash >= 2, 'flash plein écran absent');
+
+    // Option carnage : on vérifie que la prise devient bien plus sanglante.
+    const goreFx = await evaluate(`
+      (() => {
+        const app = window.checkersApp;
+        window.SettingsManager.set('goreMode', true);
+        app.settings = window.SettingsManager.settings;
+        app.onCaptureEffect(22, 1, 1);
+        return {
+          gore: window.Animations.gore.length,
+          taunt: document.querySelectorAll('.capture-taunt.is-gore').length,
+          flash: document.querySelectorAll('.impact-flash.is-gore').length,
+          shaking: document.querySelector('.board-frame').classList.contains('impact-gore')
+        };
+      })()
+    `);
+    assert.ok(goreFx.gore >= 3, 'flaques de sang absentes');
+    assert.ok(goreFx.taunt >= 1, 'réplique carnage absente');
+    assert.ok(goreFx.flash >= 1, 'flash carnage absent');
+    assert.equal(goreFx.shaking, true);
+    await evaluate("window.SettingsManager.set('goreMode', false); window.checkersApp.settings = window.SettingsManager.settings;");
+
+    // Décapitation : la dame capturée perd sa couronne et sa tête.
+    const decapFx = await evaluate(`
+      (() => {
+        const app = window.checkersApp;
+        window.SettingsManager.set('decapitationMode', true);
+        app.settings = window.SettingsManager.settings;
+        app.onCaptureEffect(11, 1, 1, true);
+        const taunts = document.querySelectorAll('.capture-taunt.is-gore');
+        const taunt = taunts[taunts.length - 1];
+        return {
+          crowns: document.querySelectorAll('.decap-crown').length,
+          heads: document.querySelectorAll('.decap-head').length,
+          gore: window.Animations.gore.length,
+          text: taunt ? taunt.textContent : ''
+        };
+      })()
+    `);
+    assert.ok(decapFx.crowns >= 1, 'couronne volante absente');
+    assert.ok(decapFx.heads >= 1, 'tête volante absente');
+    assert.ok(decapFx.gore >= 1, 'flaque de décapitation absente');
+    assert.ok(decapFx.text.indexOf('HEAD') !== -1, 'réplique de décapitation absente');
+    await evaluate("window.SettingsManager.set('decapitationMode', false); window.checkersApp.settings = window.SettingsManager.settings;");
+
+    // Frappe royale : c'est une dame qui mange, même sans option sanglante.
+    const royalFx = await evaluate(`
+      (() => {
+        const app = window.checkersApp;
+        app.onCaptureEffect(55, 1, 1, false, true);
+        const taunts = document.querySelectorAll('.capture-taunt.is-royal');
+        return {
+          taunt: taunts.length ? taunts[taunts.length - 1].textContent : '',
+          goldWave: window.Animations.shockwaves.some((s) => s.gold === true),
+          blood: window.Animations.gore.length
+        };
+      })()
+    `);
+    assert.ok(royalFx.taunt.indexOf('ROYALE') !== -1, 'réplique de frappe royale absente');
+    assert.equal(royalFx.goldWave, true, 'onde dorée absente');
 
     const save = await evaluate(`
       (() => {

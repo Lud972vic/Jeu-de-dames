@@ -15,11 +15,12 @@
 | Intelligence artificielle | `tests/test-ai.js` | 11 | 11 | 0 |
 | Stockage, paramètres, reprise | `tests/test-storage.js` | 11 | 11 | 0 |
 | Fond de particules | `tests/test-particles.js` | 5 | 5 | 0 |
+| Effets de capture / carnage / décapitation / frappe royale | `tests/test-animations.js` | 6 | 6 | 0 |
 | Profils et sauvegardes nommées | `tests/test-profiles.js` | 4 | 4 | 0 |
 | Puzzles tactiques | `tests/test-puzzles.js` | 8 | 8 | 0 |
 | Compatibilité WebKit (audit statique) | `tests/test-webkit.js` | 4 | 4 | 0 |
 | Intégrité, PWA, ressources | `tests/test-integrity.js` | 10 | 10 | 0 |
-| **Total Node.js** | — | **81** | **81** | **0** |
+| **Total Node.js** | — | **87** | **87** | **0** |
 | Parcours navigateur Edge | `scripts/browser-smoke-test.js` | 17 étapes | 17 | 0 |
 | Parcours navigateur Firefox | `scripts/browser-smoke-test-firefox.js` | 11 étapes | 11 | 0 |
 
@@ -194,6 +195,15 @@ Windows et aucune dépendance réseau n'est autorisée.
    `font-smoothing`.
 3. Enregistrement du Service Worker protégé et limité à HTTP(S).
 4. Aucune API exclusive à Chromium dans le contrôleur principal.
+
+### Effets de capture, carnage, décapitation et frappe royale (`test-animations.js`)
+
+1. Le mode carnage ajoute sang, flaques et coulures à la capture brutale.
+2. Les coulures s'étalent puis les flaques s'estompent avec le temps.
+3. Le rendu du carnage utilise bien le canvas 2D.
+4. La décapitation ajoute un jet de sang et une flaque.
+5. La frappe d'une dame projette des étincelles dorées.
+6. Le mouvement réduit désactive tous les effets de capture.
 
 ---
 

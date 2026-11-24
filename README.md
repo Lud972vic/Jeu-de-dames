@@ -9,7 +9,7 @@
 **10×10 · IA locale · 100 % hors ligne · PWA & Android · Zéro serveur**
 
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20-339933?logo=node.js&logoColor=white)](#démarrage)
-[![Tests](https://img.shields.io/badge/tests-81%2F81-brightgreen)](#qualité--validation)
+[![Tests](https://img.shields.io/badge/tests-87%2F87-brightgreen)](#qualité--validation)
 [![Navigation](https://img.shields.io/badge/navigateur-17%2F17-brightgreen)](#qualité--validation)
 [![Firefox](https://img.shields.io/badge/firefox-11%2F11-brightgreen)](#qualité--validation)
 [![PWA](https://img.shields.io/badge/PWA-ready-00aef0?logo=pwa)](#pwa--android)
@@ -36,6 +36,9 @@ Les dames internationales, dans leur version la plus propre : **des règles offi
 | ⚡ **Zéro blocage** | L'attente de l'IA est une fine barre en bas de l'écran, jamais une fenêtre qui cache le plateau. |
 | 🎨 **Interface premium** | Palette rouge / bleu / cyan / blanc, deux thèmes, 4 plateaux, 4 styles de pions, animations et fond de particules réglable. |
 | 💀 **Captures brutales** | Fissures, éclaboussures, onde de choc, flash plein écran et secousse du plateau ; en rafle, l'intensité monte et les « K.O. 💀 » s'enchaînent. |
+| 🩸 **Mode carnage (option)** | Geyser de sang, flaques avec coulures, secousse et flash décuplés, et répliques macabres du coroner à chaque prise. Purement visuel, désactivé par défaut. |
+| 👑🪓 **Décapitation des dames (option)** | La reine capturée perd la tête et sa couronne qui voltigent, avec jet de sang et répliques du genre « Off with her head! ». Fonctionne même sans carnage. |
+| ⚔️ **Frappe royale** | Quand une **dame capture**, la pièce s'illumine, une lame dorée traverse le plateau et des étincelles jaillissent, avec des répliques du type « La dame fait des siens ! ». Toujours actif, aucune option à régler. |
 | 📴 **Hors ligne par design** | Après le premier chargement, tout fonctionne sans Internet — IA comprise. |
 | 🔒 **Confidentialité totale** | Aucun compte, aucune API, aucun traceur, aucun CDN. Vos parties restent chez vous. |
 
@@ -76,6 +79,8 @@ Désactivées par défaut, regroupées dans **Paramètres → Options non régle
 
 L'IA et les sauvegardes connaissent ces options ; les puzzles, eux, restent en règles officielles.
 
+À part, **Paramètres → Massacre des dames 💀** (ambiance uniquement, désactivées par défaut) : **Mode carnage** (chaque prise explose en sang avec un commentaire du coroner) et **Décapiter les dames** (la reine capturée perd la tête et sa couronne, même sans carnage). Aucune règle, aucune probabilité de l'IA et aucun puzzle n'est affecté.
+
 ---
 
 ## Aperçu
@@ -112,7 +117,7 @@ node scripts/serve.js 8080
 > Le serveur local fournit les bons types MIME et permet l'installation PWA. Sur **ordinateur**, ouvrir `index.html` en `file://` fonctionne aussi pour jouer, mais le Service Worker est désactivé par le navigateur ; l'IA bascule alors automatiquement sur le thread principal. Sur **Android**, utilisez plutôt le build autonome décrit plus bas.
 
 ```bash
-npm test                  # 81 tests Node.js
+npm test                  # 87 tests Node.js
 npm run test:browser      # parcours navigateur headless (Edge/Chrome)
 npm run test:browser:firefox # parcours Firefox 160+ via WebDriver BiDi, sans dépendance
 npm run verify            # tests + intégrité PWA
@@ -198,7 +203,7 @@ js/puzzles.js                          Puzzles tactiques et analyse de positions
 assets/                                Polices, icônes, logo, sons WAV (locaux)
 scripts/                               Serveur, tests Edge/Firefox, génération d'assets, build HTML unique
 dist/                                  Build autonome généré par `npm run build:offline`
-tests/                                 81 tests Node.js
+tests/                                 87 tests Node.js
 docs/                                  Architecture, dépendances, rapports, captures
 ```
 

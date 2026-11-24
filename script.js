@@ -314,6 +314,8 @@
         setHints: $('#set-hints'),
         setCapturesOptional: $('#set-captures-optional'),
         setChainCaptures: $('#set-chain-captures'),
+        setGoreMode: $('#set-gore-mode'),
+        setDecapitationMode: $('#set-decapitation-mode'),
 
         difficultyGrid: $('#difficulty-grid'),
         colorChoice: $('#color-choice'),
@@ -631,6 +633,24 @@
           ? 'Captures enchaînées : un coup mangeur donne un tour bonus.'
           : 'Captures enchaînées désactivées.', 'info', 2200);
       });
+
+      // Ambiance uniquement : aucun impact sur les règles ni sur l'IA.
+      if (this.dom.setGoreMode) {
+        this.dom.setGoreMode.addEventListener('change', (event) => {
+          set('goreMode', event.target.checked);
+          this.toast(event.target.checked
+            ? '🩸 Mode carnage activé : prévenez le coroner.'
+            : 'Mode carnage désactivé : on range les balances.', 'info', 2400);
+        });
+      }
+      if (this.dom.setDecapitationMode) {
+        this.dom.setDecapitationMode.addEventListener('change', (event) => {
+          set('decapitationMode', event.target.checked);
+          this.toast(event.target.checked
+            ? '👑🪓 Décapitation activée : « Qu’on leur coupe la tête ! »'
+            : 'Décapitation désactivée : les dames gardent leur couronne.', 'info', 2400);
+        });
+      }
 
       $$('#modal-settings [data-flip]').forEach((btn) => {
         btn.addEventListener('click', () => {
@@ -1228,6 +1248,9 @@
 
       const wasCapture = !!move.isCapture;
       if (!wasCapture) global.AudioManager.play('move');
+      // On lit la pièce AVANT playMove() : le plateau est remplacé juste après.
+      // Le renderer sait ainsi que c'est une dame qui effectue la rafle.
+      const moverWasKing = !!(Rules && Rules.isKing(this.engine.board[move.from]));
 
       const result = this.engine.playMove(move);
       if (!result.ok) {
@@ -1248,7 +1271,9 @@
       if (this.settings.animationsEnabled && !reducedMotion) {
         await this.renderer.animateMove(move, {
           speed: this.settings.animationSpeed,
-          onCapture: (square) => this.onCaptureEffect(square)
+          moverIsKing: moverWasKing,
+          onCapture: (square, index, total, victimWasKing) =>
+            this.onCaptureEffect(square, index, total, victimWasKing, moverWasKing)
         });
       } else if (wasCapture) {
         global.AudioManager.play('capture');
@@ -1286,18 +1311,27 @@
      * @param {number} square - Case où la pièce disparaît.
      * @param {number} index - Numéro de la capture dans une rafle.
      * @param {number} total - Nombre total de captures de la rafle.
+     * @param {boolean} [victimWasKing] - true si la victime était une dame.
+     * @param {boolean} [moverWasKing] - true si c'est une dame qui capture.
      * @returns {void} Rien : les effets sont lancés.
      * Concept JS : `Math.max` et `Math.min` bornent les valeurs pour éviter les dépassements.
      */
-    onCaptureEffect(square, index, total) {
+    onCaptureEffect(square, index, total, victimWasKing, moverWasKing) {
       global.AudioManager.play('capture');
       const count = Math.max(1, total || 1);
       const step = Math.max(1, index || 1);
       const level = Math.min(6, count + step - 1);
+      const gore = !!this.settings.goreMode;
+      const decap = !!victimWasKing && !!this.settings.decapitationMode;
+      const royal = !!moverWasKing;
 
       if (global.navigator && typeof global.navigator.vibrate === 'function') {
         try {
-          global.navigator.vibrate(count > 1 ? [35, 25, 60 + step * 15] : 30);
+          global.navigator.vibrate(gore
+            ? (count > 1 ? [70, 20, 110, 20, 150 + step * 20] : [90, 30, 130])
+            : decap ? [110, 40, 110]
+              : royal ? [45, 25, 80]
+                : (count > 1 ? [35, 25, 60 + step * 15] : 30));
         } catch (e) { /* ignoré */ }
       }
       if (!this.renderer || !this.dom.fxCanvas) return;
@@ -1307,39 +1341,51 @@
       const canvasRect = this.dom.fxCanvas.getBoundingClientRect();
       const x = center.x + (boardRect.left - canvasRect.left);
       const y = center.y + (boardRect.top - canvasRect.top);
+      const frameRect = this.dom.boardFrame
+        ? this.dom.boardFrame.getBoundingClientRect() : boardRect;
+      const frameX = center.x + (boardRect.left - frameRect.left);
+      const frameY = center.y + (boardRect.top - frameRect.top);
 
       if (global.Animations && !global.Animations.reducedMotion()) {
-        // Éclat rouge « brutal » : cracks, éclaboussures, éclats et flash (rafle = pire).
-        global.Animations.brutalCapture(x, y, level);
-        this.shakeBoard();
-        this.flashScreen(boardRect.left + center.x, boardRect.top + center.y, step);
+        if (gore) {
+          // Option carnage : base brutal + geyser, flaques et coulures de sang.
+          global.Animations.goreCapture(x, y, level);
+          this.shakeBoard(true);
+          this.flashScreen(boardRect.left + center.x, boardRect.top + center.y, step, true);
+        } else {
+          // Éclat rouge « brutal » : cracks, éclaboussures, éclats et flash (rafle = pire).
+          global.Animations.brutalCapture(x, y, level);
+          this.shakeBoard();
+          this.flashScreen(boardRect.left + center.x, boardRect.top + center.y, step);
+        }
+        // Décapitation : jet de sang supplémentaire, même sans mode carnage.
+        if (decap) global.Animations.decapitate(x, y, level);
+        // Frappe d'une dame : étincelles dorées, même sans mode carnage.
+        if (royal) global.Animations.royalStrike(x, y, level);
       } else {
         global.Animations.burst(x, y, '#f87171', 18);
       }
 
       // Petit trait d'humour : le pion n'a pas survécu à la rencontre.
-      const frameRect = this.dom.boardFrame
-        ? this.dom.boardFrame.getBoundingClientRect() : boardRect;
-      this.showCaptureTaunt(
-        center.x + (boardRect.left - frameRect.left),
-        center.y + (boardRect.top - frameRect.top),
-        count, step
-      );
+      if (decap) this.showDecapitation(frameX, frameY, step);
+      this.showCaptureTaunt(frameX, frameY, count, step, gore, decap, royal);
     }
 
     /**
      * Fait trembler le plateau peu de temps, même pendant une rafle.
-     * @returns {void} Rien : la classe CSS est ajoutée puis retirée après 360 ms.
+     * @param {boolean} [gore] - secousse plus violente en mode carnage.
+     * @returns {void} Rien : la classe CSS est ajoutée puis retirée après 360 ou 620 ms.
      * Concept JS : `clearTimeout` annule un timer précédent pour repartir proprement.
      */
-    shakeBoard() {
+    shakeBoard(gore) {
       const frame = this.dom.boardFrame;
       if (!frame) return;
-      frame.classList.remove('impact');
+      const cls = gore ? 'impact-gore' : 'impact';
+      frame.classList.remove('impact', 'impact-gore');
       void frame.offsetWidth; // force le redémarrage de l'animation CSS
-      frame.classList.add('impact');
+      frame.classList.add(cls);
       global.clearTimeout(this._shakeTimer);
-      this._shakeTimer = global.setTimeout(() => frame.classList.remove('impact'), 360);
+      this._shakeTimer = global.setTimeout(() => frame.classList.remove(cls), gore ? 620 : 360);
     }
 
     /**
@@ -1347,20 +1393,21 @@
      * @param {number} x - Position horizontale en pixels.
      * @param {number} y - Position verticale en pixels.
      * @param {number} step - Numéro de la capture ; au-delà de 1, le flash est plus fort.
-     * @returns {void} Rien : l'élément créé est retiré après 520 ms.
+     * @param {boolean} [gore] - flash plus rouge et plus long en mode carnage.
+     * @returns {void} Rien : l'élément créé est retiré après 520 ou 720 ms.
      * Concept JS : un élément fabriqué par `createElement` est ajouté puis enlevé du DOM.
      */
-    flashScreen(x, y, step) {
+    flashScreen(x, y, step, gore) {
       if (!global.document.createElement) return;
       const overlay = global.document.createElement('div');
-      overlay.className = 'impact-flash' + (step > 1 ? ' is-mega' : '');
+      overlay.className = 'impact-flash' + (step > 1 ? ' is-mega' : '') + (gore ? ' is-gore' : '');
       overlay.style.setProperty('--impact-x', x + 'px');
       overlay.style.setProperty('--impact-y', y + 'px');
       const host = global.document.body || global.document.documentElement;
       host.appendChild(overlay);
       global.setTimeout(() => {
         if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
-      }, 520);
+      }, gore ? 720 : 520);
     }
 
     /**
@@ -1369,23 +1416,115 @@
      * @param {number} y - Position verticale en pixels.
      * @param {number} total - Nombre de captures : change la liste des textes.
      * @param {number} step - Numéro de la capture dans la rafle.
-     * @returns {void} Rien : le texte disparaît après 900 ms.
+     * @param {boolean} [gore] - texte encore plus macabre en mode carnage.
+     * @param {boolean} [decap] - réplique spéciale « reine décapitée ».
+     * @param {boolean} [royal] - réplique spéciale « c'est une dame qui attaque ».
+     * @returns {void} Rien : le texte disparaît après 900 ms (1250 en carnage).
      * Concept JS : un tableau de chaînes contient tous les textes possibles.
      */
-    showCaptureTaunt(x, y, total, step) {
+    showCaptureTaunt(x, y, total, step, gore, decap, royal) {
       const frame = this.dom.boardFrame;
       if (!frame || !global.document.createElement) return;
       const single = ['K.O. 💀', 'BOUM 💥', 'RIP 💀', 'ÉCLATÉ !', 'C’EST MORT', '+1 ÂME', 'PAIN !', 'CORONER 📞'];
       const multi = ['K.O. 💀', 'DOUBLE K.O. 💀', 'TRIPLE K.O. 💀', 'QUADRA K.O. 💀', 'MASSACRE 💀', 'BUFFET LIBRE 🍽️'];
-      const labels = total > 1 ? multi : single;
+      const queenSingle = [
+        'OFF WITH HER HEAD! 👑🪓', 'LA REINE A PERDU LA TÊTE 🗡️',
+        'DÉCAPITATION ROYALE 👑🩸', 'PLUS DE COURONNE, PLUS DE TÊTE 🪦',
+        'SA MAJESTÉ… EN PIÈCES 💀', 'LE BOURREAU TRAVAILLE 🔪',
+        'TÊTE COURONNÉE, TÊTE COUPÉE 🪓', 'C’EST PAS TRÈS ROYAL 🩸'
+      ];
+      const queenMulti = [
+        'DOUBLE DÉCAPITATION 🪓', 'TRIPLE ROYALE TRÉPAS 👑🩸',
+        'MASSACRE DE LA NOBLESSE 💀', 'QUATRE TÊTES, ZÉRO COURONNE 🪦'
+      ];
+      const royalSingle = [
+        'FRAPPE ROYALE 👑⚔️', 'LA DAME FAIT DES SIENS 🗡️',
+        'ELLE A FAIT SON MENU 🍽️👑', 'DAME VOLANTE, COUPES VOLANTES 🪓',
+        'SERVICE VIP DE LA MORT 💀', 'COURONNE + LAME = COMBO ⚔️',
+        'ELLE NE FERAIT PAS DE CADEAU 🎁', 'REINE : 1, PION : 0 👑'
+      ];
+      const royalMulti = [
+        'DOUBLE FRAPPE ROYALE 👑⚔️', 'TRIPLE COMBO DE DAME 🗡️',
+        'QUADRA RASSEMBLEMENT 👑💀', 'LA REINE FAIT LE MENU 🍽️🩸'
+      ];
+      const goreSingle = [
+        'DÉCAPITÉ ! 🩸', 'CERVELLE EN VUE 🧠', 'RIP… ET RIPOSTE 💀',
+        'IL EST PARTI EN PIÈCES 🧩', 'ON NOTERA LA DATE 📅',
+        'LE CORONER ARRIVE 🚑', 'DERNIÈRE LIGNE DE SON CV 📄',
+        'PAIN (AU SANG) 🍞🩸', 'C’ÉTAIT SON DERNIER JOUR 🪦',
+        'AUCUN SURVIVANT 🩸'
+      ];
+      const goreMulti = [
+        'DOUBLE MEURTRE 🔪', 'TRIPLE HÉCATOMBE 💀', 'QUADRA CARNAGE 🩸',
+        'BUFFET LIBRE 🍽️🩸', 'LA RAFLE A FAIT DES VICTIMES 🪦',
+        'EPISODE 4 : LE MASSACRE 🎬', 'Y A PLUS DE MONDE 🩸'
+      ];
+      const labels = decap
+        ? (total > 1 ? queenMulti : queenSingle)
+        : royal ? (total > 1 ? royalMulti : royalSingle)
+          : gore ? (total > 1 ? goreMulti : goreSingle)
+            : (total > 1 ? multi : single);
       const text = labels[Math.min(step - 1, labels.length - 1)];
       const el = global.document.createElement('span');
-      el.className = 'capture-taunt' + (total > 1 ? ' is-mega' : '');
+      el.className = 'capture-taunt' + (total > 1 ? ' is-mega' : '') +
+        (gore || decap ? ' is-gore' : royal ? ' is-royal' : '');
       el.textContent = text;
       el.style.left = x + 'px';
       el.style.top = y + 'px';
       frame.appendChild(el);
-      global.setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, 900);
+      global.setTimeout(() => {
+        if (el.parentNode) el.parentNode.removeChild(el);
+      }, gore ? 1250 : 900);
+    }
+
+    /**
+     * Fait voler la couronne et la tête de la dame capturée (option décapitation).
+     * @param {number} x - Position horizontale dans le cadre du plateau.
+     * @param {number} y - Position verticale dans le cadre du plateau.
+     * @param {number} step - Numéro de la capture, pour varier la trajectoire.
+     * @returns {void} Rien : les deux éléments sont retirés après l'animation.
+     * Concept JS : on fixe des variables CSS (--dx, --dy, --rot) que la feuille
+     * de style utilise dans sa keyframe, puis on laisse le navigateur animer.
+     */
+    showDecapitation(x, y, step) {
+      const frame = this.dom.boardFrame;
+      if (!frame || !global.document.createElement) return;
+      if (global.Animations && global.Animations.reducedMotion()) return;
+
+      const dir = (step % 2 === 0) ? 1 : -1;
+      const pieces = [
+        {
+          cls: 'decap-crown',
+          dx: dir * (58 + Math.random() * 52),
+          dy: -72 - Math.random() * 46,
+          rot: dir * (240 + Math.random() * 160),
+          delay: 0,
+          life: 1150
+        },
+        {
+          cls: 'decap-head',
+          dx: -dir * (44 + Math.random() * 46),
+          dy: -46 - Math.random() * 34,
+          rot: -dir * (280 + Math.random() * 140),
+          delay: 70,
+          life: 1350
+        }
+      ];
+
+      for (const part of pieces) {
+        const el = global.document.createElement('span');
+        el.className = part.cls;
+        el.style.left = x + 'px';
+        el.style.top = y + 'px';
+        el.style.setProperty('--dx', Math.round(part.dx) + 'px');
+        el.style.setProperty('--dy', Math.round(part.dy) + 'px');
+        el.style.setProperty('--rot', Math.round(part.rot) + 'deg');
+        el.style.animationDelay = part.delay + 'ms';
+        frame.appendChild(el);
+        global.setTimeout(() => {
+          if (el.parentNode) el.parentNode.removeChild(el);
+        }, part.life + part.delay);
+      }
     }
 
     /**
@@ -2859,6 +2998,10 @@
       if (this.dom.setGithubPromo) this.dom.setGithubPromo.checked = this.settings.githubPromo !== false;
       this.dom.setCapturesOptional.checked = !!this.settings.capturesOptional;
       this.dom.setChainCaptures.checked = !!this.settings.chainCaptures;
+      if (this.dom.setGoreMode) this.dom.setGoreMode.checked = !!this.settings.goreMode;
+      if (this.dom.setDecapitationMode) {
+        this.dom.setDecapitationMode.checked = !!this.settings.decapitationMode;
+      }
       this.dom.setPlayerName.value = this.settings.playerName || 'Joueur';
       const avatarBtn = $('#modal-settings [data-avatar="' + (this.settings.playerAvatar || 'user') + '"]');
       if (avatarBtn) this.setAvatarActive(avatarBtn);

@@ -102,6 +102,21 @@ PWA hors ligne, tests et documentation.
     tour au lieu de le céder à l'adversaire.
   - Ces options sont enregistrées dans les paramètres et transmises au moteur via
     `ruleOptions` ; elles ne modifient pas le comportement par défaut.
+- En plus, `goreMode` (« Mode carnage 💀 », désactivé par défaut) est une option
+  **purement cosmétique** : geyser de sang, flaques avec coulures, secousse et flash
+  renforcés et répliques macabres à chaque capture. Il ne touche ni aux règles, ni à
+  l'IA, ni aux puzzles, et respecte le réglage « réduire les animations ».
+- `decapitationMode` (« Décapiter les dames 👑🪓 », désactivé par défaut) est
+  également cosmétique : quand une **dame** est capturée, sa couronne et sa tête
+  volent hors du plateau (`showDecapitation`) avec un jet de sang (`Animations.decapitate`)
+  et une réplique du type « Off with her head! ». Le renderer transmet `isKing` au
+  contrôleur ; l'option fonctionne même sans carnage et sans changer les règles.
+- La **frappe royale** est toujours active (aucune option) : quand une dame capture,
+  le renderer ajoute `queen-strike` à la pièce (aura dorée, lame lumineuse), le
+  contrôleur transmet `moverWasKing` et `Animations.royalStrike()` projette des
+  éclats dorés avec une onde de choc dorée. Les répliques sont spécifiques à
+  l'attaquante (« La dame fait des siens ! »). Priorité à la décapitation si la
+  victime est aussi une dame avec l'option activée.
 
 ### IA
 
@@ -148,8 +163,9 @@ PWA hors ligne, tests et documentation.
 
 ## Résultats des derniers tests
 
-- **Node.js : 81/81 tests réussis**, 0 échec (28 règles, 11 IA, 11 stockage,
-  5 particules, 4 profils, 8 puzzles, 4 WebKit, 10 intégrité) ; `npm run verify` passe.
+- **Node.js : 87/87 tests réussis**, 0 échec (28 règles, 11 IA, 11 stockage,
+  5 particules, 6 animations/carnage/décapitation/frappe royale, 4 profils,
+  8 puzzles, 4 WebKit, 10 intégrité) ; `npm run verify` passe.
 - **Navigateur Edge headless : 17/17 étapes réussies**, 0 exception JavaScript
   (réglages complets, choix des Noirs, repli sans Worker, hors ligne, fin de
   partie, profils et sauvegardes nommées, puzzles et analyse).
@@ -164,7 +180,7 @@ PWA hors ligne, tests et documentation.
 Commandes :
 
 ```bash
-npm test                  # 81 tests Node.js
+npm test                  # 87 tests Node.js
 npm run test:browser      # parcours navigateur réel (Edge/Chrome)
 npm run test:browser:firefox # parcours Firefox (BiDi)
 npm run verify            # vérification globale

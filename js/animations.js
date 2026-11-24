@@ -11,7 +11,7 @@
  * `ctx.beginPath()`, `ctx.arc()`, `ctx.fill()` tracent des formes, tandis que
  * `ctx.clearRect()` efface l'image précédente à chaque image. Les objets à
  * afficher vivent dans des tableaux (`particles`, `confetti`, `shockwaves`,
- * `splats`, `cracks`) ; on les fait évoluer avec `_update()` puis on les
+ * `splats`, `cracks`, `gore`) ; on les fait évoluer avec `_update()` puis on les
  * supprime avec `splice()` lorsqu'ils ont disparu. La boucle est pilotée par
  * `requestAnimationFrame()` : le navigateur rappelle notre fonction `frame`
  * environ 60 fois par seconde. `devicePixelRatio` (dpr) adapte la résolution
@@ -35,7 +35,8 @@
     shockwaves: [],    // anneaux de choc
     splats: [],        // éclaboussures collées au plateau
     cracks: [],        // fissures du plateau
-    flash: 0,          // intensité du flash rouge (0 = aucun, max 0,5)
+    gore: [],          // flaques de sang et coulures (mode carnage)
+    flash: 0,          // intensité du flash rouge (0 = aucun, max 0,55 en carnage)
     running: false,    // true tant que la boucle d'animation tourne
     dpr: 1,            // ratio de pixels de l'écran (devicePixelRatio)
 
@@ -222,6 +223,205 @@
     },
 
     /**
+     * Mode carnage : la capture « brutal » plus une mare de sang, des morceaux
+     * et des coulures qui s'étalent. Purement visuel : aucune règle n'est touchée.
+     * @param {number} x position dans le canvas (pixels CSS)
+     * @param {number} y position dans le canvas (pixels CSS)
+     * @param {number} intensity niveau de la rafle (1, 2, 3…)
+     * @returns {void}
+     * Concept : on réutilise `brutalCapture()` pour la base, puis on ajoute une
+     * couche supplémentaire. `Math.min` borne le niveau à 9 pour ne jamais
+     * produire des milliers de particules, même sur une rafle interminable.
+     */
+    goreCapture(x, y, intensity) {
+      if (this.reducedMotion()) return;
+      const level = Math.max(1, Math.min(9, intensity || 1));
+
+      // Base : choc, fissures et éclats habituels, puis on monte d'un cran.
+      this.brutalCapture(x, y, Math.min(6, level));
+      this.shockwaves.push({
+        x: x, y: y, radius: 2, max: 170 + level * 28,
+        life: 1, decay: 0.075, width: 2.5
+      });
+
+      // Geyser : grosses gouttes de sang avec traînée, gravité et frottement.
+      const blood = ['#dc0038', '#a30020', '#ff1e3c', '#7a0013', '#ff6b6b'];
+      const drops = Math.min(240, 80 + level * 22);
+      for (let i = 0; i < drops; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 4 + Math.random() * (7 + level * 2);
+        this.particles.push({
+          x: x, y: y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed - 3,
+          life: 1,
+          decay: 0.01 + Math.random() * 0.014,
+          size: 3 + Math.random() * (5 + level),
+          color: blood[Math.floor(Math.random() * blood.length)],
+          gravity: 0.36,
+          drag: 0.985,
+          shard: Math.random() < 0.35,
+          blob: true
+        });
+      }
+
+      // Flaques : une grande mare au point d'impact + des éclats alentour.
+      // Chaque flaque porte des lobes (irrégularité) et des coulures qui
+      // grandissent avec le temps (`_update` augmente `d.len`).
+      const pools = 3 + Math.min(5, level);
+      for (let i = 0; i < pools; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const radius = i === 0 ? 4 : 12 + Math.random() * (26 + level * 8);
+        const r = i === 0 ? 24 + level * 5 : 6 + Math.random() * (10 + level * 2);
+        const lobes = [];
+        for (let j = 0; j < 4; j++) {
+          lobes.push({
+            dx: (Math.random() - 0.5) * r * 1.8,
+            dy: (Math.random() - 0.5) * r * 1.2,
+            rx: r * (0.35 + Math.random() * 0.4),
+            ry: r * (0.25 + Math.random() * 0.35)
+          });
+        }
+        const drips = [];
+        const dripCount = i === 0 ? 3 + Math.min(4, level) : 1 + Math.floor(Math.random() * 3);
+        for (let j = 0; j < dripCount; j++) {
+          drips.push({
+            dx: (Math.random() - 0.5) * r * 1.5,
+            dy: r * 0.4,
+            size: 1.5 + Math.random() * 3.5,
+            len: 2,
+            max: 8 + Math.random() * (16 + level * 4),
+            grow: 0.4 + Math.random() * 0.9
+          });
+        }
+        this.gore.push({
+          x: x + Math.cos(angle) * radius,
+          y: y + Math.sin(angle) * radius,
+          r: r,
+          rotation: Math.random() * Math.PI,
+          color: blood[i % blood.length],
+          lobes: lobes,
+          drips: drips,
+          life: 1,
+          decay: 0.005 + Math.random() * 0.008 // reste visible un bon moment
+        });
+      }
+
+      this.flash = Math.min(0.55, this.flash + 0.3 + level * 0.07);
+      this._start();
+    },
+
+    /**
+     * Décapitation d'une dame : jet de sang vertical et flaque, même quand le
+     * mode carnage est désactivé. La couronne et la tête volantes sont, elles,
+     * des éléments DOM animés par le contrôleur (`showDecapitation`).
+     * @param {number} x position dans le canvas (pixels CSS)
+     * @param {number} y position dans le canvas (pixels CSS)
+     * @param {number} intensity niveau de la rafle
+     * @returns {void}
+     */
+    decapitate(x, y, intensity) {
+      if (this.reducedMotion()) return;
+      const level = Math.max(1, Math.min(6, intensity || 1));
+      const colors = ['#dc0038', '#a30020', '#ff1e3c', '#7a0013'];
+
+      // Jet : cône vers le haut, comme quand une tête saute.
+      const drops = 56 + level * 12;
+      for (let i = 0; i < drops; i++) {
+        const angle = -Math.PI / 2 + (Math.random() - 0.5) * 1.1;
+        const speed = 6 + Math.random() * (7 + level);
+        this.particles.push({
+          x: x, y: y,
+          vx: Math.cos(angle) * speed * 0.75,
+          vy: Math.sin(angle) * speed - 2,
+          life: 1,
+          decay: 0.014 + Math.random() * 0.016,
+          size: 2.5 + Math.random() * (4 + level * 0.6),
+          color: colors[Math.floor(Math.random() * colors.length)],
+          gravity: 0.5,
+          drag: 0.985,
+          blob: true
+        });
+      }
+
+      // Une flaque généreuse avec quelques coulures, sous le jet.
+      const lobes = [];
+      for (let j = 0; j < 5; j++) {
+        lobes.push({
+          dx: (Math.random() - 0.5) * 46,
+          dy: (Math.random() - 0.5) * 30,
+          rx: 7 + Math.random() * 13,
+          ry: 5 + Math.random() * 10
+        });
+      }
+      const drips = [];
+      for (let j = 0; j < 3 + Math.min(3, level); j++) {
+        drips.push({
+          dx: (Math.random() - 0.5) * 34,
+          dy: 9,
+          size: 2 + Math.random() * 3,
+          len: 2,
+          max: 12 + Math.random() * (14 + level * 3),
+          grow: 0.5 + Math.random()
+        });
+      }
+      this.gore.push({
+        x: x, y: y + 6,
+        r: 20 + level * 4,
+        rotation: Math.random() * Math.PI,
+        color: colors[1],
+        lobes: lobes,
+        drips: drips,
+        life: 1,
+        decay: 0.007
+      });
+
+      this.shockwaves.push({
+        x: x, y: y, radius: 4, max: 70 + level * 18,
+        life: 1, decay: 0.06, width: 2
+      });
+      this.flash = Math.min(0.6, this.flash + 0.16);
+      this._start();
+    },
+
+    /**
+     * Frappe royale : une dame vient de capturer. Éclats dorés en lame et
+     * anneau lumineux, visibles même sans les options sanglantes.
+     * @param {number} x position dans le canvas (pixels CSS)
+     * @param {number} y position dans le canvas (pixels CSS)
+     * @param {number} intensity niveau de la rafle
+     * @returns {void}
+     */
+    royalStrike(x, y, intensity) {
+      if (this.reducedMotion()) return;
+      const level = Math.max(1, Math.min(6, intensity || 1));
+      const gold = ['#fff3c4', '#fbbf24', '#f59e0b', '#ffffff'];
+
+      // Lame : éclats très rapides dans un cône orienté vers la cible.
+      for (let i = 0; i < 40 + level * 10; i++) {
+        const angle = (Math.random() - 0.5) * 1.5 + (Math.random() < 0.5 ? 0 : Math.PI);
+        const speed = 6 + Math.random() * (8 + level * 1.4);
+        this.particles.push({
+          x: x, y: y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed * 0.55,
+          life: 1,
+          decay: 0.02 + Math.random() * 0.02,
+          size: 1.5 + Math.random() * 3.5,
+          color: gold[Math.floor(Math.random() * gold.length)],
+          gravity: 0.12,
+          drag: 0.97,
+          shard: true
+        });
+      }
+      this.shockwaves.push({
+        x: x, y: y, radius: 3, max: 64 + level * 16,
+        life: 1, decay: 0.07, width: 2.5, gold: true
+      });
+      this._start();
+    },
+
+    /**
      * Indique si l'utilisateur préfère réduire les animations.
      * @returns {boolean} true si les effets doivent être désactivés
      * Concept : `classList.contains` vérifie une classe CSS sur le body, et
@@ -257,7 +457,7 @@
         this._update(dt);
         this._draw();
         if (this.particles.length || this.confetti.length || this.shockwaves.length ||
-            this.splats.length || this.cracks.length || this.flash > 0) {
+            this.splats.length || this.cracks.length || this.gore.length || this.flash > 0) {
           global.requestAnimationFrame(frame);
         } else {
           this.running = false;
@@ -303,6 +503,14 @@
         c.life -= c.decay * dt;
         if (c.life <= 0) this.cracks.splice(i, 1);
       }
+      for (let i = this.gore.length - 1; i >= 0; i--) {
+        const g = this.gore[i];
+        for (const drip of g.drips) {
+          drip.len = Math.min(drip.max, drip.len + drip.grow * dt);
+        }
+        g.life -= g.decay * dt;
+        if (g.life <= 0) this.gore.splice(i, 1);
+      }
       if (this.flash > 0) this.flash = Math.max(0, this.flash - 0.055 * dt);
       for (let i = this.confetti.length - 1; i >= 0; i--) {
         const c = this.confetti[i];
@@ -346,11 +554,39 @@
         ctx.stroke();
       }
 
+      // Flaques de sang (mode carnage) : dessinées sous les éclats pour que
+      // ceux-ci restent lisibles. Les coulures s'allongent dans _update().
+      for (const g of this.gore) {
+        const alpha = Math.max(0, Math.min(1, g.life)) * 0.88;
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = g.color;
+        ctx.beginPath();
+        ctx.ellipse(g.x, g.y, g.r, g.r * 0.72, g.rotation, 0, Math.PI * 2);
+        ctx.fill();
+        for (const lobe of g.lobes) {
+          ctx.beginPath();
+          ctx.ellipse(g.x + lobe.dx, g.y + lobe.dy, lobe.rx, lobe.ry,
+            g.rotation, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        for (const drip of g.drips) {
+          ctx.beginPath();
+          ctx.ellipse(g.x + drip.dx, g.y + drip.dy + drip.len / 2,
+            drip.size, Math.max(1, drip.len / 2), 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
       for (const p of this.particles) {
         ctx.globalAlpha = Math.max(0, p.life);
         ctx.fillStyle = p.color;
         ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+        if (p.blob) {
+          ctx.ellipse(p.x, p.y, p.size * p.life, p.size * p.life * 0.78,
+            p.x * 0.1, 0, Math.PI * 2);
+        } else {
+          ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+        }
         ctx.fill();
         if (p.shard) {
           // Traînée de l'éclat, orientée dans le sens de la vitesse.
@@ -387,7 +623,8 @@
 
       for (const s of this.shockwaves) {
         const alpha = Math.max(0, Math.min(1, s.life)) * 0.85;
-        ctx.strokeStyle = 'rgba(255, 45, 45, ' + alpha.toFixed(3) + ')';
+        const rgb = s.gold ? '255, 214, 110' : '255, 45, 45';
+        ctx.strokeStyle = 'rgba(' + rgb + ', ' + alpha.toFixed(3) + ')';
         ctx.lineWidth = s.width * Math.max(0.3, s.life);
         ctx.beginPath();
         ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);

@@ -46,6 +46,8 @@
     showLegalMoves: true,
     capturesOptional: false,  // true = la prise n'est plus obligatoire
     chainCaptures: false,     // true = capturer donne un tour supplémentaire
+    goreMode: false,          // true = captures sanglantes et répliques acidicules
+    decapitationMode: false,  // true = les dames capturées sont décapitées
     boardFlipped: false,      // true = Noirs en bas
     timerMinutes: 10,         // 0 = illimité
     animationSpeed: 1,        // 0.5 | 1 | 1.5

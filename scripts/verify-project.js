@@ -49,6 +49,7 @@ const TESTS = [
   'tests/test-ai.js',
   'tests/test-storage.js',
   'tests/test-particles.js',
+  'tests/test-animations.js',
   'tests/test-profiles.js',
   'tests/test-puzzles.js',
   'tests/test-webkit.js',
