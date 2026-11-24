@@ -8,7 +8,7 @@
 'use strict';
 
 const CACHE_PREFIX = 'checkers-legend-2026-';
-const CACHE_NAME = CACHE_PREFIX + 'v1.2.8';
+const CACHE_NAME = CACHE_PREFIX + 'v1.2.9';
 
 const PRECACHE = [
   './',

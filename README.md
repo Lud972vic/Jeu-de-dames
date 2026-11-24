@@ -65,6 +65,7 @@ Les dames internationales, dans leur version la plus propre : **des règles offi
 - **6 puzzles tactiques** : rafles, promotion, dames volantes, puzzle du jour, indices et XP.
 - **Analyse de position** : l'IA locale recommande un coup directement dans la modale puzzle.
 - **Progression des puzzles** conservée : puzzle en cours rouvert, résolus marqués d'un ✓.
+- **Petit mot GitHub** au lancement, désactivable dans les paramètres.
 
 ### Variantes non réglementaires
 
@@ -159,7 +160,8 @@ aucune permission à accepter, aucune application verrouillée à côté du syst
 - **Sécurisé** : aucune donnée n'est envoyée, rien n'est téléchargé, tout reste sur l'appareil.
 - **À jour** : le fichier est régénéré à chaque livraison avec `npm run build:offline`.
 
-Le dossier `dist/` contient déjà la version prête à l'emploi pour smartphone.
+Le dossier `dist/` contient déjà la version prête à l'emploi pour smartphone :
+**[télécharger `checkers-legend-offline.html`](https://github.com/Lud972vic/Jeu-de-dames/raw/main/dist/checkers-legend-offline.html)** (~1,4 Mo).
 
 ---
 

@@ -164,6 +164,7 @@
       this.updateSoundUI();
       this.refreshResumeButton();
       this.showScreen('home');
+      this.maybeShowGithubPromo();
 
       // Déverrouille l'audio à la première interaction (politique navigateur).
       const unlock = () => {
@@ -253,6 +254,9 @@
         homeAvatarIcon: $('#home-avatar-icon'),
         setPlayerName: $('#set-player-name'),
         setCoach: $('#set-coach'),
+        setGithubPromo: $('#set-github-promo'),
+        modalGithubPromo: $('#modal-github-promo'),
+        btnPromoDisable: $('#btn-promo-disable'),
         coachBar: $('#coach-bar'),
         evalFill: $('#eval-fill'),
         coachScore: $('#coach-score'),
@@ -462,6 +466,13 @@
       on('#btn-fullscreen-game', 'click', () => this.toggleFullscreen());
       on('#btn-fullscreen-settings', 'click', () => this.toggleFullscreen());
       on('#btn-reset-settings', 'click', () => this.resetSettings());
+      on('#btn-promo-disable', 'click', () => {
+        global.SettingsManager.set('githubPromo', false);
+        this.settings = global.SettingsManager.settings;
+        if (this.dom.setGithubPromo) this.dom.setGithubPromo.checked = false;
+        this.closeModal('modal-github-promo');
+        this.toast('Message GitHub désactivé.', 'success', 2200);
+      });
       on('#btn-theme-home', 'click', () => this.toggleMode());
       on('#btn-theme-game', 'click', () => this.toggleMode());
       on('#btn-preview-promotion', 'click', () => this.playPreviewPromotion());
@@ -576,6 +587,14 @@
         set('particleDensity', event.target.value);
         if (global.ParticlesBackground) global.ParticlesBackground.sync();
       });
+      if (this.dom.setGithubPromo) {
+        this.dom.setGithubPromo.addEventListener('change', (event) => {
+          set('githubPromo', event.target.checked);
+          this.toast(event.target.checked
+            ? 'Message GitHub activé au lancement.'
+            : 'Message GitHub désactivé.', 'info', 1800);
+        });
+      }
       this.dom.setHints.addEventListener('change', (event) => {
         set('showLegalMoves', event.target.checked);
         if (this.gameActive && this.selected !== null) {
@@ -697,6 +716,32 @@
       if (this.dom.playerName) this.dom.playerName.textContent = name;
       if (this.dom.homeAvatarIcon) this.dom.homeAvatarIcon.className = 'icon i-' + avatar;
       if (this.gameActive) this.syncPanels();
+    }
+
+    /**
+     * Affiche une petite modale GitHub au premier lancement de la session.
+     * @returns {void} Rien : la modale s'ouvre après un court délai si l'option est active.
+     * Concept JS : `setTimeout` exécute une fonction plus tard, sans bloquer le jeu.
+     *   `sessionStorage` mémorise le fait que le message a déjà été vu pendant
+     *   cette session du navigateur (contrairement à `localStorage`, il est
+     *   oublié à la fermeture de l'onglet).
+     */
+    maybeShowGithubPromo() {
+      if (!this.dom.modalGithubPromo) return;
+      if (this.settings && this.settings.githubPromo === false) return;
+      let alreadyShown = false;
+      try {
+        alreadyShown = global.sessionStorage.getItem('cl2026:github-promo') === '1';
+      } catch (error) {
+        alreadyShown = false;
+      }
+      if (alreadyShown) return;
+      global.setTimeout(() => {
+        if (this.settings && this.settings.githubPromo === false) return;
+        if (!this.dom.modalGithubPromo.classList.contains('hidden')) return;
+        this.openModal('modal-github-promo');
+        try { global.sessionStorage.setItem('cl2026:github-promo', '1'); } catch (error) { /* ignoré */ }
+      }, 900);
     }
 
     /**
@@ -2811,6 +2856,7 @@
       this.dom.setParticleDensity.value = this.settings.particleDensity || 'normal';
       this.dom.setHints.checked = !!this.settings.showLegalMoves;
       this.dom.setCoach.checked = !!this.settings.coachMode;
+      if (this.dom.setGithubPromo) this.dom.setGithubPromo.checked = this.settings.githubPromo !== false;
       this.dom.setCapturesOptional.checked = !!this.settings.capturesOptional;
       this.dom.setChainCaptures.checked = !!this.settings.chainCaptures;
       this.dom.setPlayerName.value = this.settings.playerName || 'Joueur';

@@ -158,6 +158,7 @@ test('Paramètres : valeurs par défaut, persistance et réinitialisation', () =
   assert.equal(defaults.mode, 'dark');
   assert.equal(defaults.difficulty, 'normal');
   assert.equal(defaults.animationsEnabled, true);
+  assert.equal(defaults.githubPromo, true);
 
   SettingsManager.set('theme', 'midnight');
   SettingsManager.set('pieceStyle', 'ruby');
@@ -171,6 +172,7 @@ test('Paramètres : valeurs par défaut, persistance et réinitialisation', () =
   SettingsManager.set('animationsEnabled', false);
   SettingsManager.set('showLegalMoves', false);
   SettingsManager.set('mode', 'light');
+  SettingsManager.set('githubPromo', false);
 
   const reloaded = SettingsManager.load();
   assert.equal(reloaded.theme, 'midnight');
@@ -185,6 +187,7 @@ test('Paramètres : valeurs par défaut, persistance et réinitialisation', () =
   assert.equal(reloaded.animationsEnabled, false);
   assert.equal(reloaded.showLegalMoves, false);
   assert.equal(reloaded.mode, 'light');
+  assert.equal(reloaded.githubPromo, false);
   assert.equal(SettingsManager.toggleMode(), 'dark');
 
   SettingsManager.reset();
@@ -192,6 +195,7 @@ test('Paramètres : valeurs par défaut, persistance et réinitialisation', () =
   assert.equal(SettingsManager.settings.mode, 'dark');
   assert.equal(SettingsManager.settings.volume, 0.7);
   assert.equal(SettingsManager.settings.boardFlipped, false);
+  assert.equal(SettingsManager.settings.githubPromo, true);
 });
 
 /* ------------------------------------------------------------

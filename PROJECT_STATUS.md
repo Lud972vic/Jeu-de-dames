@@ -27,7 +27,7 @@ PWA hors ligne, tests et documentation.
 
 ### Racine
 
-- `index.html` — interface complète (accueil, mode, jeu, 6 modales).
+- `index.html` — interface complète (accueil, mode, jeu, 8 modales).
 - `style.css` — thèmes néon/glassmorphism, responsive, animations.
 - `script.js` — contrôleur principal (jeu, IA, chronomètres, sauvegardes, UI).
 - `manifest.json` — manifeste PWA.
@@ -115,7 +115,8 @@ PWA hors ligne, tests et documentation.
 
 ### Interface
 
-- 3 écrans, 7 modales, thèmes multiples, styles de pièces.
+- 3 écrans, 8 modales, thèmes multiples, styles de pièces.
+- Message GitHub au lancement (une fois par session), désactivable dans les paramètres.
 - Puzzles tactiques : 6 positions, validation, indice, puzzle du jour, XP et ✓ sur les
   puzzles résolus ; analyse IA de la position et bouton « Puzzle suivant ».
 - Palettes sombre et clair inspirées du logo (rouge/bleu/cyan/blanc) : plateau et dame

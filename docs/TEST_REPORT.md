@@ -223,7 +223,7 @@ Captures produites dans `docs/screenshots/`.
 | # | Scénario | Vérifications |
 |---|----------|---------------|
 | 1 | Chargement de l'accueil | Titre exact, 3 écrans, accueil actif, 4 cartes de difficulté |
-| 2 | Sons et paramètres complets | Bascule sonore, préchargement de 5+ effets WAV, thème, pièces, difficulté, chronomètre, vitesse, temps IA, volume, sons, animations, aides, orientation, puis réinitialisation complète aux valeurs par défaut |
+| 2 | Sons et paramètres complets | Bascule sonore, préchargement de 5+ effets WAV, thème, pièces, difficulté, chronomètre, vitesse, temps IA, volume, sons, animations, aides, message GitHub, orientation, puis réinitialisation complète aux valeurs par défaut |
 | 3 | Modales règles et historique | 7 cartes de règles (dont les options non réglementaires), ouverture/fermeture de l'historique |
 | 4 | Nouvelle partie IA (Facile) | Écran de jeu, 100 cases, 40 pièces, mode et difficulté corrects, Blancs au trait |
 | 5 | Coup humain + réponse IA | Affichage des cibles, coup appliqué, réponse du Worker, statistiques IA, historique, sauvegarde automatique |

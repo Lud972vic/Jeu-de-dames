@@ -3014,3 +3014,39 @@ body[data-mode="light"] .field input[type="text"] {
   .coach-label { font-size: 0; }
   .coach-label .icon { font-size: 14px; }
 }
+
+/* Message GitHub au lancement */
+.promo-card {
+  max-width: 460px;
+  text-align: center;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(0, 174, 240, 0.16), transparent 55%),
+    var(--glass);
+  border: 1px solid rgba(0, 174, 240, 0.35);
+}
+.promo-body { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 6px 4px 4px; }
+.promo-logo {
+  width: 72px;
+  height: 72px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 174, 240, 0.45);
+  background: rgba(0, 174, 240, 0.10);
+  box-shadow: 0 0 28px rgba(0, 174, 240, 0.22);
+}
+.promo-logo .icon { font-size: 34px; color: var(--cyan); }
+.promo-body h3 {
+  margin: 0;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 15px;
+  letter-spacing: 0.1em;
+  color: var(--text);
+}
+.promo-body p { margin: 0; font-size: 12px; line-height: 1.6; color: var(--text-dim); }
+.promo-link { width: 100%; justify-content: center; text-decoration: none; }
+.promo-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.promo-actions .btn-ghost { font-size: 10.5px; padding: 8px 12px; }
+@media (max-width: 520px) {
+  .promo-actions .btn-ghost { width: 100%; justify-content: center; }
+}

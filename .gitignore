@@ -1,5 +1,7 @@
 # Builds générés (reproductibles via `npm run build:offline`)
-dist/
+# On garde uniquement le fichier prêt à l'emploi pour smartphone.
+dist/*
+!dist/checkers-legend-offline.html
 
 # Dépendances / artefacts locaux
 node_modules/

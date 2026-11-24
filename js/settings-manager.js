@@ -49,7 +49,8 @@
     boardFlipped: false,      // true = Noirs en bas
     timerMinutes: 10,         // 0 = illimité
     animationSpeed: 1,        // 0.5 | 1 | 1.5
-    aiThinkMs: 0              // 0 = automatique selon la difficulté
+    aiThinkMs: 0,             // 0 = automatique selon la difficulté
+    githubPromo: true         // petit message GitHub au lancement du jeu
   };
 
   // Objet unique utilisé par tout le jeu (un « singleton ») :

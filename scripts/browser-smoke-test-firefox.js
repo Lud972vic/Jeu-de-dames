@@ -316,6 +316,9 @@ async function main() {
         window.__ffErrors = [];
         window.addEventListener('error', (e) => window.__ffErrors.push(String(e.message)));
         window.addEventListener('unhandledrejection', (e) => window.__ffErrors.push(String(e.reason)));
+        window.SettingsManager.set('githubPromo', false);
+        window.checkersApp.settings = window.SettingsManager.settings;
+        window.checkersApp.closeModal('modal-github-promo');
         return true;
       `);
       await sleep(300);

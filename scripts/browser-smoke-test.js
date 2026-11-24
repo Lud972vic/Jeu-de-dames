@@ -387,6 +387,8 @@ async function main() {
       await cdp.send('Page.navigate', { url: url || BASE });
       await Promise.race([loaded, sleep(12000)]);
       await waitFor(() => evaluate('!!window.checkersApp'), 12000, 'initialisation de l’application');
+      // On désactive le message promotionnel pour ne pas gêner les captures.
+      await evaluate('window.SettingsManager.set("githubPromo", false); window.checkersApp.settings = window.SettingsManager.settings; window.checkersApp.closeModal("modal-github-promo");');
       await sleep(400);
     };
 
@@ -455,6 +457,7 @@ async function main() {
         toggle('#set-particles', false);
         change('#set-particle-density', 'high');
         toggle('#set-hints', false);
+        toggle('#set-github-promo', false);
         toggle('#set-captures-optional', true);
         toggle('#set-chain-captures', true);
         document.querySelector('#modal-settings [data-flip="true"]').click();
@@ -484,6 +487,7 @@ async function main() {
     assert.equal(changed.settings.particleDensity, 'high');
     assert.equal(await evaluate('document.querySelector("#bg-particles").style.visibility'), 'hidden');
     assert.equal(changed.settings.showLegalMoves, false);
+    assert.equal(changed.settings.githubPromo, false);
     assert.equal(changed.settings.boardFlipped, true);
     assert.equal(changed.settings.capturesOptional, true);
     assert.equal(changed.settings.chainCaptures, true);
@@ -512,6 +516,7 @@ async function main() {
     assert.equal(reset.settings.particleDensity, 'normal');
     assert.equal(await evaluate('document.querySelector("#bg-particles").style.visibility'), '');
     assert.equal(reset.settings.showLegalMoves, true);
+    assert.equal(reset.settings.githubPromo, true);
     assert.equal(reset.settings.boardFlipped, false);
     assert.equal(reset.settings.capturesOptional, false);
     assert.equal(reset.settings.chainCaptures, false);
