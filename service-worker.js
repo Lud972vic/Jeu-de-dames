@@ -8,7 +8,7 @@
 'use strict';
 
 const CACHE_PREFIX = 'checkers-legend-2026-';
-const CACHE_NAME = CACHE_PREFIX + 'v1.2.9';
+const CACHE_NAME = CACHE_PREFIX + 'v1.3.0';
 
 const PRECACHE = [
   './',
@@ -46,6 +46,7 @@ const PRECACHE = [
   './assets/images/icon-192.png',
   './assets/images/icon-512.png',
   './assets/images/logo.svg',
+  './assets/images/carnage-demo.gif',
   './assets/sounds/click.wav',
   './assets/sounds/move.wav',
   './assets/sounds/capture.wav',

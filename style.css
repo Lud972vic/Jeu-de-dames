@@ -728,6 +728,39 @@ body[data-mode="light"] .theme-toggle { color: var(--text-dim); }
   transform: translateY(-2px);
 }
 
+/* Aperçu animé des captures sur l'accueil (GIF local, sans réseau). */
+.home-demo {
+  width: 100%;
+  max-width: 480px;
+  margin: 18px auto 0;
+  padding: 8px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.home-demo img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: calc(var(--radius-md) - 6px);
+  background: #07070f;
+}
+.home-demo figcaption {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 4px 2px;
+  text-align: center;
+}
+.home-demo figcaption b {
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  color: #fca5a5;
+}
+.home-demo figcaption span {
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
 .home-footer {
   margin-top: auto;
   padding-top: 14px;

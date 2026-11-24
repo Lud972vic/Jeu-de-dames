@@ -184,6 +184,9 @@ function main() {
     (_m, before, after) => before + dataUri('assets/images/icon-192.png') + after);
   html = html.replace(/(<img[^>]+src=")assets\/images\/logo\.svg(")/gi,
     (_m, before, after) => before + dataUri('assets/images/logo.svg') + after);
+  // Le GIF de démonstration de l'accueil doit lui aussi être intégré.
+  html = html.replace(/(<img[^>]+src=")assets\/images\/carnage-demo\.gif(")/gi,
+    (_m, before, after) => before + dataUri('assets/images/carnage-demo.gif') + after);
 
   // 3. Scripts -> <script> en ligne, dans le même ordre que index.html.
   // L'ordre est essentiel : un script peut utiliser ce que le précédent a créé.

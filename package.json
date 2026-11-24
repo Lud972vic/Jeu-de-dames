@@ -10,7 +10,8 @@
     "test:browser": "node scripts/browser-smoke-test.js",
     "test:browser:firefox": "node scripts/browser-smoke-test-firefox.js",
     "verify": "node scripts/verify-project.js",
-    "build:offline": "node scripts/build-offline-html.js"
+    "build:offline": "node scripts/build-offline-html.js",
+    "gif": "node scripts/generate-demo-gif.js"
   },
   "engines": {
     "node": ">=20"

@@ -96,6 +96,13 @@ L'IA et les sauvegardes connaissent ces options ; les puzzles, eux, restent en r
   </tr>
 </table>
 
+<p align="center">
+  <b>Aperçu animé des captures (frappe royale · décapitation · carnage) :</b><br>
+  <img src="assets/images/carnage-demo.gif" alt="GIF de démonstration des effets de capture" width="480">
+</p>
+
+Le GIF est affiché sur l'accueil du jeu et fonctionne hors ligne. Il peut être régénéré avec `npm run gif`.
+
 ---
 
 ## Démarrage
@@ -122,6 +129,7 @@ npm run test:browser      # parcours navigateur headless (Edge/Chrome)
 npm run test:browser:firefox # parcours Firefox 160+ via WebDriver BiDi, sans dépendance
 npm run verify            # tests + intégrité PWA
 npm run build:offline     # génère le fichier HTML unique pour Android
+npm run gif                # régénère le GIF de démonstration (Edge/Chrome)
 ```
 
 > **Sur Android, ne copiez pas seulement le dossier.** Ouvrir `index.html` en
