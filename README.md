@@ -9,8 +9,9 @@
 **10×10 · IA locale · 100 % hors ligne · PWA & Android · Zéro serveur**
 
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20-339933?logo=node.js&logoColor=white)](#démarrage)
-[![Tests](https://img.shields.io/badge/tests-60%2F60-brightgreen)](#qualité--validation)
-[![Navigation](https://img.shields.io/badge/navigateur-15%2F15-brightgreen)](#qualité--validation)
+[![Tests](https://img.shields.io/badge/tests-81%2F81-brightgreen)](#qualité--validation)
+[![Navigation](https://img.shields.io/badge/navigateur-17%2F17-brightgreen)](#qualité--validation)
+[![Firefox](https://img.shields.io/badge/firefox-11%2F11-brightgreen)](#qualité--validation)
 [![PWA](https://img.shields.io/badge/PWA-ready-00aef0?logo=pwa)](#pwa--android)
 [![Licence](https://img.shields.io/badge/licence-MIT-ffc72c)](#licence)
 
@@ -26,7 +27,7 @@
 
 ## Pourquoi ce jeu ?
 
-Les dames internationales, dans leur version la plus propre : **unes règles officielles**, une **IA qui réfléchit sans bloquer l'écran**, une interface soignée qui tourne partout — et **aucune donnée qui quitte votre appareil**.
+Les dames internationales, dans leur version la plus propre : **des règles officielles**, une **IA qui réfléchit sans bloquer l'écran**, une interface soignée qui tourne partout — et **aucune donnée qui quitte votre appareil**.
 
 | | |
 |---|---|
@@ -114,7 +115,7 @@ npm test                  # 81 tests Node.js
 npm run test:browser      # parcours navigateur headless (Edge/Chrome)
 npm run test:browser:firefox # parcours Firefox 160+ via WebDriver BiDi, sans dépendance
 npm run verify            # tests + intégrité PWA
-npm run build:offline # génère le fichier HTML unique pour Android
+npm run build:offline     # génère le fichier HTML unique pour Android
 ```
 
 > **Sur Android, ne copiez pas seulement le dossier.** Ouvrir `index.html` en
@@ -165,7 +166,7 @@ wrapper qui ouvre une URL HTTPS, il ne contient pas le jeu.
 npm run build:offline
 ```
 
-Génère `dist/checkers-legend-offline.html` (~1,1 Mo) : **un seul fichier** qui
+Génère `dist/checkers-legend-offline.html` (~1,4 Mo) : **un seul fichier** qui
 contient tout (code, styles, polices, images, sons, Worker). Copiez ce fichier
 sur le téléphone et ouvrez-le avec **Chrome** — le jeu fonctionne hors ligne,
 sans serveur et sans installer quoi que ce soit.
@@ -223,6 +224,7 @@ js/board-renderer.js                   Plateau, pièces, animations
 js/{storage,settings,statistics,audio,animations}-manager.js
 js/profile-manager.js                  Profils, registre et parties nommées
 js/particles-background.js             Fond de particules canvas (thème adaptatif)
+js/puzzles.js                          Puzzles tactiques et analyse de positions
 assets/                                Polices, icônes, logo, sons WAV (locaux)
 scripts/                               Serveur, tests Edge/Firefox, génération d'assets, build HTML unique
 dist/                                  Build autonome généré par `npm run build:offline`
