@@ -16,6 +16,7 @@ const TESTS = [
   'tests/test-rules.js',
   'tests/test-ai.js',
   'tests/test-storage.js',
+  'tests/test-particles.js',
   'tests/test-integrity.js'
 ];
 

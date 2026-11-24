@@ -27,8 +27,9 @@ test('Livrables obligatoires présents et non vides', () => {
     'config/game-config.js', 'js/game-rules.js', 'js/game-engine.js',
     'js/ai-engine.js', 'js/ai-worker.js', 'js/board-renderer.js',
     'js/puzzles.js',
-    'js/animations.js', 'js/audio-manager.js', 'js/storage-manager.js',
-    'js/settings-manager.js', 'js/statistics.js',
+    'js/animations.js', 'js/particles-background.js',
+    'js/audio-manager.js', 'js/storage-manager.js',
+    'js/settings-manager.js', 'js/statistics.js', 'tests/test-particles.js',
     'manifest.json', 'service-worker.js', 'README.md', 'docs/TEST_REPORT.md',
     'vendor/bootstrap/css/bootstrap.min.css',
     'vendor/bootstrap/js/bootstrap.bundle.min.js',
@@ -86,7 +87,8 @@ test('Syntaxe JavaScript valide pour tous les modules', () => {
     'config/game-config.js', 'js/game-rules.js', 'js/game-engine.js',
     'js/ai-engine.js', 'js/ai-worker.js', 'js/board-renderer.js',
     'js/puzzles.js',
-    'js/animations.js', 'js/audio-manager.js', 'js/storage-manager.js',
+    'js/animations.js', 'js/particles-background.js',
+    'js/audio-manager.js', 'js/storage-manager.js',
     'js/settings-manager.js', 'js/statistics.js',
     'scripts/serve.js'
   ];
@@ -122,7 +124,7 @@ test('Manifeste PWA valide et icônes aux bonnes dimensions', () => {
   assert.equal(manifest.lang, 'fr');
   assert.equal(manifest.display, 'standalone');
   assert.equal(manifest.start_url, './index.html');
-  assert.equal(manifest.theme_color, '#091731');
+  assert.equal(manifest.theme_color, '#07070f');
   assert.ok(Array.isArray(manifest.icons) && manifest.icons.length >= 2);
   for (const shot of (manifest.screenshots || [])) {
     assert.ok(exists(shot.src), 'capture manquante : ' + shot.src);
@@ -177,6 +179,7 @@ test('Ordre de chargement des scripts compatible avec les modules UMD', () => {
     'js/statistics.js',
     'js/audio-manager.js',
     'js/animations.js',
+    'js/particles-background.js',
     'js/board-renderer.js',
     'js/puzzles.js',
     'js/ai-engine.js',

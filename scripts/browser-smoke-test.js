@@ -268,6 +268,8 @@ async function main() {
         input('#set-volume', '35');
         toggle('#set-sounds', false);
         toggle('#set-animations', false);
+        toggle('#set-particles', false);
+        change('#set-particle-density', 'high');
         toggle('#set-hints', false);
         toggle('#set-captures-optional', true);
         toggle('#set-chain-captures', true);
@@ -294,6 +296,9 @@ async function main() {
     assert.equal(changed.settings.volume, 0.35);
     assert.equal(changed.settings.soundsEnabled, false);
     assert.equal(changed.settings.animationsEnabled, false);
+    assert.equal(changed.settings.particlesEnabled, false);
+    assert.equal(changed.settings.particleDensity, 'high');
+    assert.equal(await evaluate('document.querySelector("#bg-particles").style.visibility'), 'hidden');
     assert.equal(changed.settings.showLegalMoves, false);
     assert.equal(changed.settings.boardFlipped, true);
     assert.equal(changed.settings.capturesOptional, true);
@@ -319,6 +324,9 @@ async function main() {
     assert.equal(reset.settings.aiThinkMs, 0);
     assert.equal(reset.settings.soundsEnabled, true);
     assert.equal(reset.settings.animationsEnabled, true);
+    assert.equal(reset.settings.particlesEnabled, true);
+    assert.equal(reset.settings.particleDensity, 'normal');
+    assert.equal(await evaluate('document.querySelector("#bg-particles").style.visibility'), '');
     assert.equal(reset.settings.showLegalMoves, true);
     assert.equal(reset.settings.boardFlipped, false);
     assert.equal(reset.settings.capturesOptional, false);
@@ -365,6 +373,32 @@ async function main() {
     assert.ok(await evaluate('window.checkersApp.lastAIStats && window.checkersApp.lastAIStats.nodes > 0'));
     assert.equal(await evaluate('document.querySelector("#ai-stats-panel").classList.contains("hidden")'), false);
     assert.ok(await evaluate('document.querySelectorAll("#history-list li").length >= 1'));
+
+    // Effet de capture « brutal » : secousse, onde de choc et trait d'humour.
+    const captureFx = await evaluate(`
+      (() => {
+        const app = window.checkersApp;
+        app.onCaptureEffect(33, 1, 1);
+        app.onCaptureEffect(44, 2, 2);
+        return {
+          taunts: document.querySelectorAll('.capture-taunt').length,
+          mega: document.querySelectorAll('.capture-taunt.is-mega').length,
+          shaking: document.querySelector('.board-frame').classList.contains('impact'),
+          waves: window.Animations.shockwaves.length,
+          cracks: window.Animations.cracks.length,
+          splats: window.Animations.splats.length,
+          flash: document.querySelectorAll('.impact-flash').length
+        };
+      })()
+    `);
+    assert.ok(captureFx.taunts >= 2, 'textes de capture absents');
+    assert.ok(captureFx.mega >= 1, 'texte de rafle absent');
+    assert.equal(captureFx.shaking, true);
+    assert.ok(captureFx.waves >= 2, 'ondes de choc absentes');
+    assert.ok(captureFx.cracks >= 5, 'fissures absentes');
+    assert.ok(captureFx.splats >= 10, 'éclaboussures absentes');
+    assert.ok(captureFx.flash >= 2, 'flash plein écran absent');
+
     const save = await evaluate(`
       (() => {
         const raw = localStorage.getItem('cl2026:savegame');

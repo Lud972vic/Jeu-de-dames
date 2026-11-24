@@ -33,7 +33,8 @@ Les dames internationales, dans leur version la plus propre : **unes règles off
 | ⚖️ **Règles officielles** | 10×10, prise obligatoire, rafles, prise majoritaire, dames volantes, promotion en fin de capture. |
 | 🧠 **IA locale et réactive** | Minimax + Alpha-Bêta, table Zobrist, quiescence, 4 niveaux, exécutée dans un Web Worker. |
 | ⚡ **Zéro blocage** | L'attente de l'IA est une fine barre en bas de l'écran, jamais une fenêtre qui cache le plateau. |
-| 🎨 **Interface premium** | Palette rouge / bleu / cyan / blanc, deux thèmes, 4 plateaux, 4 styles de pions, animations et particules. |
+| 🎨 **Interface premium** | Palette rouge / bleu / cyan / blanc, deux thèmes, 4 plateaux, 4 styles de pions, animations et fond de particules réglable. |
+| 💀 **Captures brutales** | Fissures, éclaboussures, onde de choc, flash plein écran et secousse du plateau ; en rafle, l'intensité monte et les « K.O. 💀 » s'enchaînent. |
 | 📴 **Hors ligne par design** | Après le premier chargement, tout fonctionne sans Internet — IA comprise. |
 | 🔒 **Confidentialité totale** | Aucun compte, aucune API, aucun traceur, aucun CDN. Vos parties restent chez vous. |
 
@@ -104,7 +105,7 @@ node scripts/serve.js 8080
 > Le serveur local fournit les bons types MIME et permet l'installation PWA. Sur **ordinateur**, ouvrir `index.html` en `file://` fonctionne aussi pour jouer, mais le Service Worker est désactivé par le navigateur ; l'IA bascule alors automatiquement sur le thread principal. Sur **Android**, utilisez plutôt le build autonome décrit plus bas.
 
 ```bash
-npm test             # 60 tests Node.js
+npm test             # 65 tests Node.js
 npm run test:browser # parcours navigateur headless (Edge/Chrome)
 npm run verify       # tests + intégrité PWA
 npm run build:offline # génère le fichier HTML unique pour Android
@@ -213,10 +214,11 @@ js/game-engine.js                      État, historique, annulation
 js/ai-engine.js · ai-worker.js         Minimax, Zobrist, Web Worker
 js/board-renderer.js                   Plateau, pièces, animations
 js/{storage,settings,statistics,audio,animations}-manager.js
+js/particles-background.js             Fond de particules canvas (thème adaptatif)
 assets/                                Polices, icônes, logo, sons WAV (locaux)
 scripts/                               Serveur, tests, génération d'assets, build HTML unique
 dist/                                  Build autonome généré par `npm run build:offline`
-tests/                                 60 tests Node.js
+tests/                                 65 tests Node.js
 docs/                                  Architecture, dépendances, rapports, captures
 ```
 

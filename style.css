@@ -205,6 +205,16 @@ button {
   pointer-events: none;
 }
 
+/* Fond de particules façon particles.js (canvas natif, hors ligne). */
+.bg-particles {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  opacity: 0.9;
+}
+
 .bg-orb {
   position: absolute;
   border-radius: 50%;
@@ -1026,6 +1036,79 @@ body[data-theme="glass"] .square.light { backdrop-filter: blur(6px); }
   pointer-events: none;
   z-index: 5;
   border-radius: var(--radius-lg);
+}
+
+/* Capture « brutale » : secousse du plateau + privation de pion assumée. */
+.board-frame.impact {
+  animation: impactShake 0.42s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+@keyframes impactShake {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg) scale(1); }
+  12%      { transform: translate3d(-13px, 6px, 0) rotate(-1.1deg) scale(1.015); }
+  26%      { transform: translate3d(11px, -8px, 0) rotate(0.9deg) scale(1.02); }
+  42%      { transform: translate3d(-9px, -5px, 0) rotate(-0.6deg) scale(1.01); }
+  58%      { transform: translate3d(7px, 5px, 0) rotate(0.4deg); }
+  74%      { transform: translate3d(-4px, 2px, 0) rotate(-0.2deg); }
+  88%      { transform: translate3d(2px, -1px, 0); }
+}
+
+/* Flash plein écran : le choc déborde largement du plateau. */
+.impact-flash {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  background: radial-gradient(circle at var(--impact-x, 50%) var(--impact-y, 50%),
+    rgba(255, 24, 24, 0.6) 0%,
+    rgba(227, 6, 19, 0.3) 20%,
+    rgba(120, 0, 0, 0.12) 42%,
+    transparent 68%);
+  animation: impactFlash 0.5s ease-out forwards;
+}
+.impact-flash.is-mega {
+  background: radial-gradient(circle at var(--impact-x, 50%) var(--impact-y, 50%),
+    rgba(255, 40, 40, 0.78) 0%,
+    rgba(227, 6, 19, 0.42) 26%,
+    rgba(120, 0, 0, 0.18) 48%,
+    transparent 75%);
+}
+@keyframes impactFlash {
+  0%   { opacity: 1; }
+  35%  { opacity: 0.65; }
+  100% { opacity: 0; }
+}
+
+.capture-taunt {
+  position: absolute;
+  z-index: 6;
+  transform: translate(-50%, -50%);
+  font-family: 'Orbitron', 'Segoe UI', sans-serif;
+  font-size: clamp(18px, 2.6vw, 34px);
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  color: #fff;
+  text-shadow:
+    0 0 12px #ff0000,
+    0 0 34px rgba(227, 6, 19, 1),
+    0 3px 0 #7a0006,
+    0 6px 18px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+  animation: tauntFloat 1s ease-out forwards;
+}
+
+.capture-taunt.is-mega {
+  font-size: clamp(24px, 3.8vw, 52px);
+  color: #ffe2e2;
+}
+
+@keyframes tauntFloat {
+  0%   { opacity: 0; transform: translate(-50%, -10%) scale(0.4) rotate(-12deg); }
+  18%  { opacity: 1; transform: translate(-50%, -65%) scale(1.45) rotate(6deg); }
+  38%  { opacity: 1; transform: translate(-50%, -85%) scale(1.05) rotate(-3deg); }
+  60%  { opacity: 1; transform: translate(-50%, -100%) scale(1.1) rotate(1deg); }
+  100% { opacity: 0; transform: translate(-50%, -200%) scale(0.95); }
 }
 
 /* ------------------------------------------------------------
@@ -2175,6 +2258,13 @@ body.no-animations .bg-orb,
 body.reduced-motion .bg-orb { animation: none; }
 body.no-animations .spinner,
 body.reduced-motion .spinner { animation: spin 1.2s linear infinite !important; }
+/* Le trait d'esprit reste lisible (juste non animé) avec mouvement réduit. */
+body.no-animations .capture-taunt,
+body.reduced-motion .capture-taunt {
+  animation: none !important;
+  opacity: 1;
+  transform: translate(-50%, -50%);
+}
 
 /* Focus accessible */
 button:focus-visible, select:focus-visible, input:focus-visible {

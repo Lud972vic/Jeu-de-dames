@@ -20,6 +20,8 @@
     volume: 0.7,
     soundsEnabled: true,
     animationsEnabled: true,
+    particlesEnabled: true,  // fond animé de particules
+    particleDensity: 'normal', // low | normal | high
     showLegalMoves: true,
     capturesOptional: false,  // true = la prise n'est plus obligatoire
     chainCaptures: false,     // true = capturer donne un tour supplémentaire
@@ -31,12 +33,25 @@
 
   const SettingsManager = {
     settings: Object.assign({}, DEFAULTS),
+    _motionBound: false,
+
+    /** Réagit au changement du réglage système « réduire les animations ». */
+    _bindMotionPreference() {
+      if (this._motionBound || !global.matchMedia || !global.document) return;
+      const query = global.matchMedia('(prefers-reduced-motion: reduce)');
+      if (!query) return;
+      const onChange = () => this.apply();
+      if (typeof query.addEventListener === 'function') query.addEventListener('change', onChange);
+      else if (typeof query.addListener === 'function') query.addListener(onChange);
+      this._motionBound = true;
+    },
 
     load() {
       const stored = global.StorageManager
         ? global.StorageManager.get(CFG.STORAGE.KEYS.SETTINGS, {})
         : {};
       this.settings = Object.assign({}, DEFAULTS, stored || {});
+      this._bindMotionPreference();
       this.apply();
       return this.settings;
     },
@@ -98,6 +113,9 @@
         : null;
       if (meta) {
         meta.setAttribute('content', this.settings.mode === 'light' ? '#eef1fb' : '#07070f');
+      }
+      if (global.ParticlesBackground && typeof global.ParticlesBackground.sync === 'function') {
+        global.ParticlesBackground.sync();
       }
     },
 

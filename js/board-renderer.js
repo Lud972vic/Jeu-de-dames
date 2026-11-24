@@ -241,7 +241,7 @@
     /**
      * Anime un coup (déplacement + captures + promotion).
      * @param {object} move coup issu du moteur
-     * @param {object} opts { speed, onCapture(square) }
+     * @param {object} opts { speed, onCapture(square, index, total) }
      */
     async animateMove(move, opts) {
       opts = opts || {};
@@ -262,7 +262,8 @@
         await global.Animations.sleep(stepMs);
 
         // Capture associée à cette étape (si présente).
-        const capturedSquare = move.captures[i - 1];
+        const captureIndex = i - 1;
+        const capturedSquare = move.captures[captureIndex];
         if (capturedSquare !== undefined) {
           const capEl = this.pieceEls.get(capturedSquare);
           if (capEl) {
@@ -270,7 +271,9 @@
             this.pieceEls.delete(capturedSquare);
             global.setTimeout(() => capEl.remove(), 380);
           }
-          if (opts.onCapture) opts.onCapture(capturedSquare);
+          if (opts.onCapture) {
+            opts.onCapture(capturedSquare, captureIndex + 1, move.captures.length);
+          }
         }
       }
 

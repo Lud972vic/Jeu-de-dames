@@ -136,8 +136,8 @@ PWA hors ligne, tests et documentation.
 
 ## Résultats des derniers tests
 
-- **Node.js : 60/60 tests réussis**, 0 échec (28 règles, 11 IA, 11 stockage,
-  10 intégrité) ; `npm run verify` passe.
+- **Node.js : 65/65 tests réussis**, 0 échec (28 règles, 11 IA, 11 stockage,
+  5 particules, 10 intégrité) ; `npm run verify` passe.
 - **Navigateur Edge headless : 15/15 étapes réussies**, 0 exception JavaScript
   (réglages complets, choix des Noirs, repli sans Worker, hors ligne, fin de partie).
 - **Hors ligne :** rechargement et partie contre l'IA validés réseau coupé.
@@ -149,7 +149,7 @@ PWA hors ligne, tests et documentation.
 Commandes :
 
 ```bash
-npm test             # 60 tests Node.js
+npm test             # 65 tests Node.js
 npm run test:browser # parcours navigateur réel
 npm run verify       # vérification globale
 npm start            # http://127.0.0.1:8080

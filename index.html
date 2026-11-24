@@ -19,6 +19,7 @@
 
   <!-- ===================== DÉCOR DE FOND ===================== -->
   <div class="bg-scene" aria-hidden="true">
+    <canvas class="bg-particles" id="bg-particles"></canvas>
     <div class="bg-orb bg-orb-1"></div>
     <div class="bg-orb bg-orb-2"></div>
     <div class="bg-orb bg-orb-3"></div>
@@ -518,6 +519,11 @@
               <span class="switch"></span>
             </label>
             <label class="switch-row">
+              <span class="switch-label"><span class="icon i-sparkles"></span> Particules en fond</span>
+              <input type="checkbox" id="set-particles" checked>
+              <span class="switch"></span>
+            </label>
+            <label class="switch-row">
               <span class="switch-label"><span class="icon i-help"></span> Afficher les coups possibles</span>
               <input type="checkbox" id="set-hints" checked>
               <span class="switch"></span>
@@ -528,6 +534,15 @@
               <span class="switch"></span>
             </label>
           </div>
+
+          <label class="field">
+            <span>Densité des particules</span>
+            <select id="set-particle-density">
+              <option value="low">Discrète</option>
+              <option value="normal" selected>Normale</option>
+              <option value="high">Intense</option>
+            </select>
+          </label>
 
           <div class="settings-section">
             <span>Options non réglementaires</span>
@@ -816,6 +831,7 @@
   <script src="js/statistics.js"></script>
   <script src="js/audio-manager.js"></script>
   <script src="js/animations.js"></script>
+  <script src="js/particles-background.js"></script>
   <script src="js/board-renderer.js"></script>
   <script src="js/puzzles.js"></script>
   <script src="js/ai-engine.js"></script>

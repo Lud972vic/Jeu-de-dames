@@ -95,6 +95,7 @@
       global.AudioManager.configure(this.settings);
       global.AudioManager.init();
       global.Animations.init(this.dom.fxCanvas);
+      if (global.ParticlesBackground) global.ParticlesBackground.init(this.dom.bgParticles);
 
       this.renderer = new global.BoardRenderer(this.dom.board, this.dom.piecesLayer);
       this.renderer.onSquareClick = (square) => this.onSquareClick(square);
@@ -131,6 +132,8 @@
         board: $('#board'),
         piecesLayer: $('#pieces-layer'),
         fxCanvas: $('#fx-canvas'),
+        bgParticles: $('#bg-particles'),
+        boardFrame: $('.board-frame'),
 
         playerLevel: $('#player-level'),
         xpFill: $('#xp-fill'),
@@ -232,6 +235,8 @@
         volumeValue: $('#volume-value'),
         setSounds: $('#set-sounds'),
         setAnimations: $('#set-animations'),
+        setParticles: $('#set-particles'),
+        setParticleDensity: $('#set-particle-density'),
         setHints: $('#set-hints'),
         setCapturesOptional: $('#set-captures-optional'),
         setChainCaptures: $('#set-chain-captures'),
@@ -466,6 +471,14 @@
         this.updateSoundUI();
       });
       this.dom.setAnimations.addEventListener('change', (event) => set('animationsEnabled', event.target.checked));
+      this.dom.setParticles.addEventListener('change', (event) => {
+        set('particlesEnabled', event.target.checked);
+        if (global.ParticlesBackground) global.ParticlesBackground.sync();
+      });
+      this.dom.setParticleDensity.addEventListener('change', (event) => {
+        set('particleDensity', event.target.value);
+        if (global.ParticlesBackground) global.ParticlesBackground.sync();
+      });
       this.dom.setHints.addEventListener('change', (event) => {
         set('showLegalMoves', event.target.checked);
         if (this.gameActive && this.selected !== null) {
@@ -1001,18 +1014,84 @@
       }
     }
 
-    onCaptureEffect(square) {
+    onCaptureEffect(square, index, total) {
       global.AudioManager.play('capture');
+      const count = Math.max(1, total || 1);
+      const step = Math.max(1, index || 1);
+      const level = Math.min(6, count + step - 1);
+
       if (global.navigator && typeof global.navigator.vibrate === 'function') {
-        try { global.navigator.vibrate(18); } catch (e) { /* ignoré */ }
+        try {
+          global.navigator.vibrate(count > 1 ? [35, 25, 60 + step * 15] : 30);
+        } catch (e) { /* ignoré */ }
       }
       if (!this.renderer || !this.dom.fxCanvas) return;
+
       const center = this.renderer.squareCenter(square);
       const boardRect = this.dom.board.getBoundingClientRect();
       const canvasRect = this.dom.fxCanvas.getBoundingClientRect();
       const x = center.x + (boardRect.left - canvasRect.left);
       const y = center.y + (boardRect.top - canvasRect.top);
-      global.Animations.burst(x, y, '#f87171', 18);
+
+      if (global.Animations && !global.Animations.reducedMotion()) {
+        // Éclat rouge « brutal » : cracks, éclaboussures, éclats et flash (rafle = pire).
+        global.Animations.brutalCapture(x, y, level);
+        this.shakeBoard();
+        this.flashScreen(boardRect.left + center.x, boardRect.top + center.y, step);
+      } else {
+        global.Animations.burst(x, y, '#f87171', 18);
+      }
+
+      // Petit trait d'humour : le pion n'a pas survécu à la rencontre.
+      const frameRect = this.dom.boardFrame
+        ? this.dom.boardFrame.getBoundingClientRect() : boardRect;
+      this.showCaptureTaunt(
+        center.x + (boardRect.left - frameRect.left),
+        center.y + (boardRect.top - frameRect.top),
+        count, step
+      );
+    }
+
+    /** Secousse courte du plateau, réinitialisable pendant une rafle. */
+    shakeBoard() {
+      const frame = this.dom.boardFrame;
+      if (!frame) return;
+      frame.classList.remove('impact');
+      void frame.offsetWidth; // force le redémarrage de l'animation CSS
+      frame.classList.add('impact');
+      global.clearTimeout(this._shakeTimer);
+      this._shakeTimer = global.setTimeout(() => frame.classList.remove('impact'), 360);
+    }
+
+    /** Flash rouge plein écran centré sur la pièce qui vient de disparaître. */
+    flashScreen(x, y, step) {
+      if (!global.document.createElement) return;
+      const overlay = global.document.createElement('div');
+      overlay.className = 'impact-flash' + (step > 1 ? ' is-mega' : '');
+      overlay.style.setProperty('--impact-x', x + 'px');
+      overlay.style.setProperty('--impact-y', y + 'px');
+      const host = global.document.body || global.document.documentElement;
+      host.appendChild(overlay);
+      global.setTimeout(() => {
+        if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      }, 520);
+    }
+
+    /** Texte flottant humoristique au-dessus de la case capturée. */
+    showCaptureTaunt(x, y, total, step) {
+      const frame = this.dom.boardFrame;
+      if (!frame || !global.document.createElement) return;
+      const single = ['K.O. 💀', 'BOUM 💥', 'RIP 💀', 'ÉCLATÉ !', 'C’EST MORT', '+1 ÂME', 'PAIN !', 'CORONER 📞'];
+      const multi = ['K.O. 💀', 'DOUBLE K.O. 💀', 'TRIPLE K.O. 💀', 'QUADRA K.O. 💀', 'MASSACRE 💀', 'BUFFET LIBRE 🍽️'];
+      const labels = total > 1 ? multi : single;
+      const text = labels[Math.min(step - 1, labels.length - 1)];
+      const el = global.document.createElement('span');
+      el.className = 'capture-taunt' + (total > 1 ? ' is-mega' : '');
+      el.textContent = text;
+      el.style.left = x + 'px';
+      el.style.top = y + 'px';
+      frame.appendChild(el);
+      global.setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, 900);
     }
 
     undoMove() {
@@ -2152,6 +2231,8 @@
       this.dom.volumeValue.textContent = Math.round(this.settings.volume * 100) + ' %';
       this.dom.setSounds.checked = !!this.settings.soundsEnabled;
       this.dom.setAnimations.checked = !!this.settings.animationsEnabled;
+      this.dom.setParticles.checked = this.settings.particlesEnabled !== false;
+      this.dom.setParticleDensity.value = this.settings.particleDensity || 'normal';
       this.dom.setHints.checked = !!this.settings.showLegalMoves;
       this.dom.setCoach.checked = !!this.settings.coachMode;
       this.dom.setCapturesOptional.checked = !!this.settings.capturesOptional;

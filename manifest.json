@@ -11,7 +11,7 @@
   "display_override": ["window-controls-overlay", "standalone", "fullscreen"],
   "orientation": "any",
   "background_color": "#040a18",
-  "theme_color": "#091731",
+  "theme_color": "#07070f",
   "categories": ["games", "entertainment"],
   "icons": [
     {

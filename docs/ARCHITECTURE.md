@@ -1,6 +1,6 @@
 # CHECKERS LEGEND 2026 — Architecture technique
 
-Document de référence pour la phase 0 (Architecture & préparation). Il décrit l'architecture générale, les responsabilités des modules, les dépendances et le plan de tests. Aucune fonctionnalité n'est implémentée à cette étape.
+Document de référence du projet. Il décrit l'architecture générale, les responsabilités des modules, les dépendances et le plan de tests. Le jeu est implémenté : seules les phases validées du plan de développement ci-dessous restent documentées à titre historique.
 
 ---
 
@@ -44,7 +44,8 @@ CHECKERS-LEGEND-2026/
 │   ├── ai-engine.js              # IA : Minimax + Alpha-Bêta, évaluation stratégique, optimisations (move ordering, transposition table, Zobrist, iterative deepening, quiescence)
 │   ├── ai-worker.js              # Web Worker exécutant l'IA en arrière-plan (annulation possible)
 │   ├── board-renderer.js         # Rendu du plateau et des pions (DOM/CSS), sélection, coups possibles
-│   ├── animations.js             # Animations de déplacement, capture, promotion, confetti
+│   ├── animations.js             # Animations de déplacement, capture « brutale », promotion, confetti
+│   ├── particles-background.js   # Fond de particules canvas (densité, clic, thèmes)
 │   ├── audio-manager.js          # Gestion des sons locaux (Web Audio API / <audio>)
 │   ├── storage-manager.js        # Sauvegardes locales (LocalStorage/IndexedDB) avec versioning de schéma
 │   ├── settings-manager.js       # Paramètres utilisateur persistés localement
@@ -55,7 +56,7 @@ CHECKERS-LEGEND-2026/
 │
 ├── tests/
 │   ├── run-tests.js              # Runner de tests minimaliste (node:test) — zéro dépendance externe
-│   └── test-*.js                 # Tests du moteur de règles et de l'IA
+│   └── test-*.js                 # Tests règles, IA, stockage, intégrité PWA et fond de particules
 │
 ├── scripts/
 │   ├── fetch-dependencies.ps1    # Script reproductible de récupération des dépendances (Phase 1)
@@ -82,10 +83,11 @@ CHECKERS-LEGEND-2026/
 | `ai-engine.js` | IA stratégique : Minimax + Alpha-Bêta avec move ordering, transposition table (Zobrist hashing), iterative deepening, quiescence search, endgame evaluation. Quatre niveaux de difficulté (Facile/Normal/Difficile/Expert) via profondeurs configurables. | `game-rules.js`, `config/game-config.js` | Oui — testable via Node |
 | `ai-worker.js` | Web Worker : reçoit la position + config de difficulté, retourne le meilleur coup + statistiques (positions analysées, temps, profondeur atteinte). Supporte l'annulation d'une recherche en cours. Ne bloque jamais l'interface. | `ai-engine.js` | Oui — exécutable dans un Worker |
 | `board-renderer.js` | Rendu DOM du plateau et des pions (CSS/DOM, pas de canvas lourd) : sélection d'une pièce, affichage des coups légaux possibles, mise à jour après chaque coup. | `game-engine.js` | Non — dépend du DOM |
-| `animations.js` | Animations CSS + particules canvas (captures, promotion, confetti de victoire). Respecte la préférence « réduire les animations ». | Aucune logique métier | Non |
+| `animations.js` | Animations CSS + effets canvas : capture « brutale » (fissures, éclaboussures, éclats, ondes de choc, flash) avec intensité croissante en rafle, éclat doré de promotion, confetti de victoire. Respecte la préférence « réduire les animations ». | Aucune logique métier | Non |
+| `particles-background.js` | Fond de particules façon particles.js, en Canvas 2D natif : densité réglable (discrète / normale / intense), liaisons entre points, réaction au curseur et au clic, palette lue dans les variables CSS du thème. Pause en arrière-plan et respect de « réduire les animations ». Aucune dépendance externe. | `settings-manager.js` (lecture seule) | Non |
 | `audio-manager.js` | Lecture des sons locaux via Web Audio API / `<audio>` : déplacement, capture, promotion, victoire. Volume et activation/désactivation persistés. Fallback synthétisé si un fichier est absent (documenté). | Aucune logique métier | Non |
 | `storage-manager.js` | Sauvegarde automatique de la partie en cours + historique des parties dans LocalStorage/IndexedDB, avec versioning du schéma pour préserver les anciennes données lors des évolutions. | Aucune logique métier | Oui — testable via Node (avec mock) |
-| `settings-manager.js` | Paramètres utilisateur persistés : thème, couleur des pions, difficulté par défaut, volume sonore, animations activées/désactivées, plein écran, orientation du plateau, affichage des coups possibles, durée du chronomètre, vitesse des animations, temps max de réflexion IA. | Aucune logique métier | Oui — testable via Node (avec mock) |
+| `settings-manager.js` | Paramètres utilisateur persistés : thème, couleur des pions, difficulté par défaut, volume sonore, animations activées/désactivées, particules de fond (activation + densité), plein écran, orientation du plateau, affichage des coups possibles, durée du chronomètre, vitesse des animations, temps max de réflexion IA. Réagit aussi au changement système de « réduire les animations ». | Aucune logique métier | Oui — testable via Node (avec mock) |
 | `statistics.js` | Statistiques : victoires/défaites par mode et difficulté, XP, niveaux du joueur, récompenses. Persistées localement. | `storage-manager.js` | Partiellement — logique pure séparée de la persistance |
 | `script.js` | Bootstrap de l'application : initialisation des modules, routage entre écran d'accueil / sélection du mode / partie / paramètres, gestion globale des événements. | Tous les modules UI + moteur | Non |
 | `index.html` | Structure HTML sémantique : écrans (accueil, sélection de mode, partie, paramètres), liens vers CSS/JS locaux uniquement. | — | Non |
@@ -181,17 +183,17 @@ CHECKERS-LEGEND-2026/
 
 | Phase | Objectif | Livrables clés | Statut |
 |-------|----------|----------------|--------|
-| 0 | Architecture & préparation | Arborescence, modules, dépendances, plan de tests | **En cours — validation requise** |
-| 1 | Dépendances locales | `vendor/`, `assets/`, rapport de vérification | À faire |
-| 2 | Moteur de jeu | `game-rules.js`, `game-engine.js`, tests Node | À faire |
-| 3 | Intelligence artificielle | `ai-engine.js`, `ai-worker.js`, niveaux de difficulté | À faire |
-| 4 | Interface graphique | `index.html`, `style.css`, modules UI | À faire |
-| 5 | Intégration IA ↔ interface | Communication Worker, gestion des difficultés | À faire |
-| 6 | Animations & expérience premium | `animations.js`, sons, confetti | À faire |
-| 7 | Sauvegardes & bonus | `storage-manager.js`, `statistics.js`, XP/niveaux | À faire |
-| 8 | PWA & offline | `manifest.json`, `service-worker.js`, tests hors ligne | À faire |
-| 9 | Tests généraux & optimisation | Rapport de tests final | À faire |
-| 10 | Livraison finale | README complet, instructions d'installation/lancement | À faire |
+| 0 | Architecture & préparation | Arborescence, modules, dépendances, plan de tests | **Terminé** |
+| 1 | Dépendances locales | `vendor/`, `assets/`, rapport de vérification | **Terminé** |
+| 2 | Moteur de jeu | `game-rules.js`, `game-engine.js`, tests Node | **Terminé** |
+| 3 | Intelligence artificielle | `ai-engine.js`, `ai-worker.js`, niveaux de difficulté | **Terminé** |
+| 4 | Interface graphique | `index.html`, `style.css`, modules UI | **Terminé** |
+| 5 | Intégration IA ↔ interface | Communication Worker, gestion des difficultés | **Terminé** |
+| 6 | Animations & expérience premium | `animations.js`, `particles-background.js`, sons, confetti, éclats de capture | **Terminé** |
+| 7 | Sauvegardes & bonus | `storage-manager.js`, `statistics.js`, XP/niveaux | **Terminé** |
+| 8 | PWA & offline | `manifest.json`, `service-worker.js`, tests hors ligne | **Terminé** |
+| 9 | Tests généraux & optimisation | 65 tests Node + 15 parcours navigateur | **Terminé** |
+| 10 | Livraison finale | README complet, instructions d'installation/lancement | **Terminé** |
 
 ---
 
