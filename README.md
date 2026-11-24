@@ -147,51 +147,19 @@ Les règles ci-dessus sont le comportement **par défaut**. Les deux variantes p
 
 ## PWA & Android
 
-Le jeu est une **PWA complète** : manifeste, icônes 192/512, Service Worker avec précache intégral (HTML, CSS, JS, polices, sons, images).
+**Copiez un fichier, ouvrez-le, jouez.** C'est tout.
 
-### ⚠️ Avant de copier le dossier sur un téléphone
+1. Copiez **`dist/checkers-legend-offline.html`** sur votre téléphone.
+2. Ouvrez-le avec **Chrome**.
 
-Ce projet est un **site web**, pas une application Android native. Ouvrir
-`index.html` depuis un gestionnaire de fichiers Android charge la page en
-`file://` : **Chrome bloque alors les fichiers voisins** (scripts, CSS, polices,
-sons) et le jeu ne démarre pas. De même, un APK généré par PWABuilder à partir
-d'un dossier ou de `localhost` ne peut pas fonctionner : c'est un simple
-wrapper qui ouvre une URL HTTPS, il ne contient pas le jeu.
+Le jeu démarre immédiatement, **sans serveur, sans hébergement et sans APK à installer** :
+aucune permission à accepter, aucune application verrouillée à côté du système, aucun compte.
 
-👉 Guide pas-à-pas et dépannage : **[`docs/ANDROID.md`](docs/ANDROID.md)**
+- **100 % hors ligne** : le code, les styles, les polices, les images, les sons, l'IA et la sauvegarde sont déjà dans le fichier.
+- **Sécurisé** : aucune donnée n'est envoyée, rien n'est téléchargé, tout reste sur l'appareil.
+- **À jour** : le fichier est régénéré à chaque livraison avec `npm run build:offline`.
 
-### Option 1 — Fichier unique hors ligne (sans hébergement)
-
-```bash
-npm run build:offline
-```
-
-Génère `dist/checkers-legend-offline.html` (~1,4 Mo) : **un seul fichier** qui
-contient tout (code, styles, polices, images, sons, Worker). Copiez ce fichier
-sur le téléphone et ouvrez-le avec **Chrome** — le jeu fonctionne hors ligne,
-sans serveur et sans installer quoi que ce soit.
-
-### Option 2 — PWA installable (recommandée)
-
-1. Publiez le dossier en HTTPS (GitHub Pages fonctionne, `.nojekyll` est inclus).
-2. Ouvrez l'URL dans Chrome sur le téléphone.
-3. Menu `⋮` → **Ajouter à l'écran d'accueil** / **Installer l'application**.
-4. Après le premier chargement, tout fonctionne **hors ligne**, IA comprise.
-
-Le manifeste utilise des chemins relatifs (`"./"`), donc l'installation
-fonctionne aussi depuis un sous-dossier (`.../Jeu-de-dames/`).
-
-### Option 3 — APK via PWABuilder
-
-L'APK obtenu est une **Trusted Web Activity** : il ouvre l'URL de votre PWA.
-Il faut donc **d'abord** la publier en HTTPS, puis générer l'APK **depuis cette
-URL publique** (jamais depuis `localhost`), et déposer le fichier
-`.well-known/assetlinks.json` contenant l'empreinte SHA-256 de la clé de
-signature utilisée. Sans cette liaison, l'APK affiche une barre d'adresse ou
-une page d'erreur. Conservez le keystore généré pour les mises à jour.
-
-Cet APK n'est **pas autonome** : il nécessite un réseau au premier lancement.
-Pour un APK avec fichiers embarqués, voir le guide Android (Capacitor/Cordova).
+Le dossier `dist/` contient déjà la version prête à l'emploi pour smartphone.
 
 ---
 
